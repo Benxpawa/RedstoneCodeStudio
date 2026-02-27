@@ -108,15 +108,15 @@ jobs:
           # 读取 changelog 内容
           CHANGELOG_CONTENT=$(cat release_notes.txt)
 
-          # 生成完整的 release notes
-          cat > final_release_notes.txt << 'EOF'
+          # 使用 bash 变量直接替换，避免 sed 处理多行内容的问题
+          cat > final_release_notes.txt << EOF
           ## RedstoneCode Studio $VERSION
 
           ### 📦 下载说明
           - **RCStudio-$VERSION.zip** - 精简版（不包含 Maven，需自行安装）
           - **RCStudio-$VERSION-Full.zip** - 完整版（包含内置 Maven）
 
-          解压后直接运行 `rcstudio.exe` 即可。
+          解压后直接运行 \`rcstudio.exe\` 即可。
 
           ### 🔄 更新内容
           $CHANGELOG_CONTENT
@@ -125,11 +125,6 @@ jobs:
 
           **提示**: 如果遇到问题，请提交 [Issue](https://github.com/$REPO/issues)
           EOF
-
-          # 替换变量
-          sed -i "s/\$VERSION/$VERSION/g" final_release_notes.txt
-          sed -i "s/\$REPO/$REPO/g" final_release_notes.txt
-          sed -i "s/\$CHANGELOG_CONTENT/$CHANGELOG_CONTENT/g" final_release_notes.txt
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
