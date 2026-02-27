@@ -179,9 +179,9 @@ jobs:
 ### 📦 下载说明
 请根据你的操作系统下载对应的压缩包：
 
-- **Windows**: 下载 \`rcstudio-windows-amd64.zip\` 或 \`rcstudio-windows-arm64.zip\`
-- **Linux**: 下载 \`rcstudio-linux-amd64.tar.gz\` 或 \`rcstudio-linux-arm64.tar.gz\`
-- **macOS**: 下载 \`rcstudio-darwin-amd64.tar.gz\` 或 \`rcstudio-darwin-arm64.tar.gz\`
+- **Windows**: 下载 \\`rcstudio-windows-amd64.zip\\` 或 \\`rcstudio-windows-arm64.zip\\`
+- **Linux**: 下载 \\`rcstudio-linux-amd64.tar.gz\\` 或 \\`rcstudio-linux-arm64.tar.gz\\`
+- **macOS**: 下载 \\`rcstudio-darwin-amd64.tar.gz\\` 或 \\`rcstudio-darwin-arm64.tar.gz\\`
 
 解压后直接运行可执行文件即可。
 
