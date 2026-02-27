@@ -1,6 +1,6 @@
 # <img src="https://free.picui.cn/free/2026/02/27/69a170aa2f2ea.png" width="40" vertical-align="middle"> RedstoneCode Studio
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Benxpawa/RedstoneCodeStudio)
+有问题？尝试→ [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Benxpawa/RedstoneCodeStudio)
 
 RedstoneCode Studio（简称 RC Studio）是一个可视化的 Minecraft 插件开发工具。它通过节点图编辑器让开发者以拖拽方式构建插件逻辑，并自动生成完整的 Java 源码、`plugin.yml`、`config.yml` 以及 Maven 项目文件（`pom.xml`）。工具内置编译后端，可直接将项目打包为可运行的 Spigot / Bukkit 插件 JAR 文件。
 
