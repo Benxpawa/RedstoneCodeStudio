@@ -1,0 +1,49 @@
+# 构建产物
+rcstudio
+rcstudio.exe
+rcstudio-*
+*.tar.gz
+*.zip
+
+# 临时构建目录
+builds/
+
+# Go 相关
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# Go 模块缓存（可选，根据需要决定是否排除）
+# vendor/
+
+# IDE 配置
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 日志文件
+*.log
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+
+# AGENTS.md（项目上下文文档）
+AGENTS.md

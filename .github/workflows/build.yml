@@ -1,0 +1,208 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+
+env:
+  GO_VERSION: '1.25'
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows
+          - os: windows
+            arch: amd64
+            runs-on: windows-latest
+            output_name: rcstudio.exe
+          - os: windows
+            arch: arm64
+            runs-on: windows-latest
+            output_name: rcstudio-arm64.exe
+          # Linux
+          - os: linux
+            arch: amd64
+            runs-on: ubuntu-latest
+            output_name: rcstudio
+          - os: linux
+            arch: arm64
+            runs-on: ubuntu-latest
+            output_name: rcstudio-arm64
+          # macOS
+          - os: darwin
+            arch: amd64
+            runs-on: macos-latest
+            output_name: rcstudio-mac-amd64
+          - os: darwin
+            arch: arm64
+            runs-on: macos-latest
+            output_name: rcstudio-mac-arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build for ${{ matrix.os }}/${{ matrix.arch }}
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: 0
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          if [ "$VERSION" = "$GITHUB_REF" ]; then
+            VERSION="dev-${GITHUB_SHA::7}"
+          fi
+          echo "Building version: $VERSION"
+          LDFLAGS="-s -w -X main.Version=$VERSION -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          go build -ldflags "$LDFLAGS" -o ${{ matrix.output_name }} main.go
+        shell: bash
+
+      - name: Prepare release assets
+        if: matrix.os != 'windows'
+        run: |
+          chmod +x ${{ matrix.output_name }}
+          tar -czf rcstudio-${{ matrix.os }}-${{ matrix.arch }}.tar.gz ${{ matrix.output_name }} resources/
+        shell: bash
+
+      - name: Prepare release assets (Windows)
+        if: matrix.os == 'windows'
+        run: |
+          7z a -tzip rcstudio-${{ matrix.os }}-${{ matrix.arch }}.zip ${{ matrix.output_name }} resources\*
+        shell: pwsh
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rcstudio-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            rcstudio-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
+            rcstudio-${{ matrix.os }}-${{ matrix.arch }}.zip
+          retention-days: 30
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const tag = '${{ github.ref_name }}';
+            
+            // 获取上一个标签
+            let previousTag;
+            try {
+              previousTag = execSync('git describe --tags --abbrev=0 HEAD^').toString().trim();
+            } catch (e) {
+              previousTag = execSync('git rev-list --max-parents=0 HEAD').toString().trim();
+            }
+            
+            // 生成变更日志
+            const changelog = execSync(`git log ${previousTag}..${tag} --pretty=format:"- %s (%h)" --no-merges`).toString();
+            
+            // 获取版本信息
+            const version = tag.replace(/^v/, '');
+            
+            // 生成 release 说明
+            const releaseNotes = `## RedstoneCode Studio ${version}
+
+### 📦 下载说明
+请根据你的操作系统下载对应的压缩包：
+
+- **Windows**: 下载 \`rcstudio-windows-amd64.zip\` 或 \`rcstudio-windows-arm64.zip\`
+- **Linux**: 下载 \`rcstudio-linux-amd64.tar.gz\` 或 \`rcstudio-linux-arm64.tar.gz\`
+- **macOS**: 下载 \`rcstudio-darwin-amd64.tar.gz\` 或 \`rcstudio-darwin-arm64.tar.gz\`
+
+解压后直接运行可执行文件即可。
+
+### 🔄 更新内容
+${changelog || '- 首次发布'}
+
+### 📝 完整更新日志
+查看 [提交历史](https://github.com/${{ github.repository }}/commits/${tag}) 获取更多详情。
+
+---
+
+**提示**: 如果遇到问题，请提交 [Issue](https://github.com/${{ github.repository }}/issues)`;
+            
+            core.setOutput('notes', releaseNotes);
+            core.setOutput('version', version);
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+        shell: bash
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: RedstoneCode Studio ${{ steps.changelog.outputs.version }}
+          body: ${{ steps.changelog.outputs.notes }}
+          draft: false
+          prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
+          files: |
+            artifacts/*/*.tar.gz
+            artifacts/*/*.zip
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release Summary
+        run: |
+          echo "## 🎉 Release Created!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.changelog.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Assets" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          ls -lh artifacts/*/*.tar.gz artifacts/*/*.zip 2>/dev/null || true >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
