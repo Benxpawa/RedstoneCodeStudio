@@ -1,0 +1,162 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+
+env:
+  GO_VERSION: '1.25'
+
+jobs:
+  build:
+    name: Build for Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          # webview_go 需要 CGO，所以不设置 CGO_ENABLED
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          if [ "$VERSION" = "$GITHUB_REF" ]; then
+            VERSION="dev-${GITHUB_SHA::7}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Building version: $VERSION"
+          LDFLAGS="-s -w -X main.Version=$VERSION -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          go build -ldflags "$LDFLAGS" -o rcstudio.exe main.go
+        shell: bash
+
+      - name: Prepare release assets
+        run: |
+          # 不带 Maven 的精简版
+          7z a -tzip RCStudio-${{ env.VERSION }}.zip rcstudio.exe resources\index.html resources\js
+          # 带 Maven 的完整版
+          7z a -tzip RCStudio-${{ env.VERSION }}-Full.zip rcstudio.exe resources
+        shell: pwsh
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rcstudio-windows-amd64
+          path: |
+            RCStudio-${{ env.VERSION }}.zip
+            RCStudio-${{ env.VERSION }}-Full.zip
+          retention-days: 30
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version and changelog
+        id: changelog
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          echo "version=$TAG" >> $GITHUB_OUTPUT
+
+          # 使用 git log 生成变更日志
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          git log "$PREV_TAG..$GITHUB_REF_NAME" --pretty=format:"- %s (%h)" --no-merges > release_notes.txt || echo "- 首次发布" > release_notes.txt
+
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          VERSION="${{ steps.changelog.outputs.version }}"
+          REPO="${{ github.repository }}"
+
+          # 读取 changelog 内容
+          CHANGELOG_CONTENT=$(cat release_notes.txt)
+
+          # 使用 bash 变量直接替换，避免 sed 处理多行内容的问题
+          cat > final_release_notes.txt << EOF
+          ## RedstoneCode Studio $VERSION
+
+          ### 📦 下载说明
+          - **RCStudio-$VERSION.zip** - 精简版（不包含 Maven，需自行安装）
+          - **RCStudio-$VERSION-Full.zip** - 完整版（包含内置 Maven）
+
+          解压后直接运行 \`rcstudio.exe\` 即可。
+
+          ### 🔄 更新内容
+          $CHANGELOG_CONTENT
+
+          ---
+
+          **提示**: 如果遇到问题，请提交 [Issue](https://github.com/$REPO/issues)
+          EOF
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+        shell: bash
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: RedstoneCode Studio ${{ steps.changelog.outputs.version }}
+          body_path: final_release_notes.txt
+          draft: false
+          prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
+          files: |
+            artifacts/*/*.zip
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release Summary
+        run: |
+          echo "## 🎉 Release Created!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.changelog.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Assets" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          ls -lh artifacts/*/*.zip 2>/dev/null || true >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

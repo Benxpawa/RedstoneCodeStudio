@@ -21,8 +21,11 @@ import (
 )
 
 var (
-	buildLock    sync.Mutex
-	ProgramDir   string
+	// Version 信息由 CI 构建时通过 ldflags 注入
+	Version   = "dev"
+	BuildTime = "unknown"
+	buildLock sync.Mutex
+	ProgramDir string
 	MavenCommand string
 )
 
