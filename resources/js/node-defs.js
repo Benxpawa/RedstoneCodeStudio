@@ -9,10 +9,9 @@ function registerAllNodes() {
         delete LiteGraph.registered_node_types[k];
     }
 
-    
+
     // 快速定义并注册一个节点类型
-    // 自动附加 onConfigure，以在蓝图加载时恢复 widget 值
-     
+
     function defNode(typeStr, title, buildFn, c, bg) {
         function N() { buildFn.call(this); this.shape = LiteGraph.BOX_SHAPE; }
         N.title = title;
@@ -20,29 +19,41 @@ function registerAllNodes() {
         N.prototype.bgcolor = bg;
         N.prototype.onConfigure = function () {
             if (this.widgets && this.properties) {
-                this.widgets.forEach(w => {
-                    if (w.name && this.properties[w.name] != null) {
-                        w.value = this.properties[w.name];
-                    }
-                });
+                if (this._propKeys) {
+                    this._propKeys.forEach((propKey, i) => {
+                        if (this.widgets[i] && propKey && this.properties[propKey] != null) {
+                            this.widgets[i].value = this.properties[propKey];
+                        }
+                    });
+                } else {
+                    this.widgets.forEach(w => {
+                        if (w.name && this.properties[w.name] != null) {
+                            w.value = this.properties[w.name];
+                        }
+                    });
+                }
             }
             setTimeout(regenerateAll, 80);
         };
         LiteGraph.registerNodeType(typeStr, N);
     }
 
-    
-    // 为手动定义的节点类补充 onConfigure
-    // 使蓝图导入后 widget 能正确恢复属性值
-     
     function applyOnConfigure(NodeClass) {
         NodeClass.prototype.onConfigure = function () {
             if (this.widgets && this.properties) {
-                this.widgets.forEach(w => {
-                    if (w.name && this.properties[w.name] != null) {
-                        w.value = this.properties[w.name];
-                    }
-                });
+                if (this._propKeys) {
+                    this._propKeys.forEach((propKey, i) => {
+                        if (this.widgets[i] && propKey && this.properties[propKey] != null) {
+                            this.widgets[i].value = this.properties[propKey];
+                        }
+                    });
+                } else {
+                    this.widgets.forEach(w => {
+                        if (w.name && this.properties[w.name] != null) {
+                            w.value = this.properties[w.name];
+                        }
+                    });
+                }
             }
             setTimeout(regenerateAll, 80);
         };
@@ -218,6 +229,7 @@ function registerAllNodes() {
         this.addInput("执行流", "exec");
         this.addOutput("执行流", "exec");
         this.addInput("执行者", "player");
+        this.addInput("用法", "string");
         this.size = [180, 70];
     }, C.cmdFg, C.cmdBg);
 
@@ -444,6 +456,7 @@ function registerAllNodes() {
         this.addProperty("Y", 64);
         this.addProperty("Z", 0);
         this.addWidget("text", "世界名", "world", (v) => { this.properties["世界"] = v; setTimeout(regenerateAll, 80); });
+        this._propKeys = ["世界", "X", "Y", "Z"];
         this.addWidget("number", "X", 0, (v) => { this.properties["X"] = v; setTimeout(regenerateAll, 80); });
         this.addWidget("number", "Y", 64, (v) => { this.properties["Y"] = v; setTimeout(regenerateAll, 80); });
         this.addWidget("number", "Z", 0, (v) => { this.properties["Z"] = v; setTimeout(regenerateAll, 80); });
@@ -471,6 +484,7 @@ function registerAllNodes() {
         this.addProperty("音量", 1.0);
         this.addProperty("音调", 1.0);
         this.addWidget("text", "音效名", "ENTITY_EXPERIENCE_ORB_PICKUP", (v) => { this.properties["音效"] = v; setTimeout(regenerateAll, 80); });
+        this._propKeys = ["音效", "音量", "音调"];
         this.addWidget("number", "音量", 1.0, (v) => { this.properties["音量"] = v; setTimeout(regenerateAll, 80); });
         this.addWidget("number", "音调", 1.0, (v) => { this.properties["音调"] = v; setTimeout(regenerateAll, 80); });
         this.size = [240, 115];
@@ -488,6 +502,7 @@ function registerAllNodes() {
         this.addProperty("偏移Y", 0);
         this.addProperty("偏移Z", 0);
         this.addWidget("text", "方块类型", "STONE", (v) => { this.properties["物品类型"] = v; setTimeout(regenerateAll, 80); });
+        this._propKeys = ["物品类型", "偏移X", "偏移Y", "偏移Z"];
         this.addWidget("number", "偏移X", 0, (v) => { this.properties["偏移X"] = v; setTimeout(regenerateAll, 80); });
         this.addWidget("number", "偏移Y", 0, (v) => { this.properties["偏移Y"] = v; setTimeout(regenerateAll, 80); });
         this.addWidget("number", "偏移Z", 0, (v) => { this.properties["偏移Z"] = v; setTimeout(regenerateAll, 80); });
@@ -501,6 +516,7 @@ function registerAllNodes() {
         this.addInput("玩家", "player");
         this.addProperty("效果闪电", true);
         this.addWidget("toggle", "仅特效(不伤害)", true, (v) => { this.properties["效果闪电"] = v; setTimeout(regenerateAll, 80); });
+        this._propKeys = ["效果闪电"];
         this.size = [210, 80];
         this.shape = LiteGraph.BOX_SHAPE;
     }, C.wldFg, C.wldBg);
@@ -526,6 +542,7 @@ function registerAllNodes() {
             const map = { "正午": 6000, "日落": 12000, "午夜": 18000, "日出": 23000 };
             this.properties["时间刻"] = map[v] || 6000; setTimeout(regenerateAll, 80);
         }, { values: ["正午", "日落", "午夜", "日出"] });
+        this._propKeys = [null];
         this.size = [210, 80];
         this.shape = LiteGraph.BOX_SHAPE;
     }, C.wldFg, C.wldBg);
@@ -579,6 +596,7 @@ function registerAllNodes() {
         this.addOutput("执行流 (延迟后)", "exec");
         this.addProperty("延迟刻", 20);
         this.addWidget("number", "延迟刻(20=1秒)", 20, (v) => { this.properties["延迟刻"] = v; setTimeout(regenerateAll, 80); });
+        this._propKeys = ["延迟刻"];
         this.size = [230, 90];
         this.shape = LiteGraph.BOX_SHAPE;
     }, C.srvFg, C.srvBg);
@@ -590,6 +608,7 @@ function registerAllNodes() {
         this.addProperty("初始延迟", 0);
         this.addProperty("间隔刻", 20);
         this.addWidget("number", "初始延迟刻", 0, (v) => { this.properties["初始延迟"] = v; setTimeout(regenerateAll, 80); });
+        this._propKeys = ["初始延迟", "间隔刻"];
         this.addWidget("number", "间隔刻", 20, (v) => { this.properties["间隔刻"] = v; setTimeout(regenerateAll, 80); });
         this.size = [230, 100];
         this.shape = LiteGraph.BOX_SHAPE;
@@ -647,6 +666,7 @@ function registerAllNodes() {
         this.addOutput("值", "string");
         this.addProperty("键", "messages.welcome");
         this.addWidget("text", "键名", "messages.welcome", (v) => { this.properties["键"] = v; setTimeout(regenerateAll, 80); });
+        this._propKeys = ["键"];
         this.size = [220, 65];
         this.shape = LiteGraph.BOX_SHAPE;
     }, C.cfgFg, C.cfgBg);
@@ -655,6 +675,7 @@ function registerAllNodes() {
         this.addOutput("值", "number");
         this.addProperty("键", "settings.max-players");
         this.addWidget("text", "键名", "settings.max-players", (v) => { this.properties["键"] = v; setTimeout(regenerateAll, 80); });
+        this._propKeys = ["键"];
         this.size = [220, 65];
         this.shape = LiteGraph.BOX_SHAPE;
     }, C.cfgFg, C.cfgBg);
@@ -671,6 +692,7 @@ function registerAllNodes() {
     SetAndSaveNode.title = "写入并保存";
     SetAndSaveNode.prototype.color = C.cfgFg;
     SetAndSaveNode.prototype.bgcolor = C.cfgBg;
+    SetAndSaveNode.prototype._propKeys = ["键"];
     applyOnConfigure(SetAndSaveNode);
     LiteGraph.registerNodeType("config/setAndSave", SetAndSaveNode);
 
@@ -746,6 +768,7 @@ function registerAllNodes() {
         this.addInput("玩家", "player");
         this.addProperty("阈值", 5.0);
         this.addWidget("number", "血量阈值", 5.0, (v) => { this.properties["阈值"] = v; setTimeout(regenerateAll, 80); });
+        this._propKeys = ["阈值"];
         this.size = [210, 90];
         this.shape = LiteGraph.BOX_SHAPE;
     }, C.lgcFg, C.lgcBg);
@@ -855,6 +878,7 @@ function registerAllNodes() {
     TextNode.title = "文本";
     TextNode.prototype.color = C.datFg;
     TextNode.prototype.bgcolor = C.datBg;
+    TextNode.prototype._propKeys = ["text"];
     applyOnConfigure(TextNode);
     LiteGraph.registerNodeType("values/text", TextNode);
 
@@ -870,6 +894,7 @@ function registerAllNodes() {
     NumberNode.title = "数字";
     NumberNode.prototype.color = C.datFg;
     NumberNode.prototype.bgcolor = C.datBg;
+    NumberNode.prototype._propKeys = ["num"];
     applyOnConfigure(NumberNode);
     LiteGraph.registerNodeType("values/number", NumberNode);
 
@@ -885,6 +910,7 @@ function registerAllNodes() {
     ColorTextNode.title = "颜色文本";
     ColorTextNode.prototype.color = C.datFg;
     ColorTextNode.prototype.bgcolor = C.datBg;
+    ColorTextNode.prototype._propKeys = ["text"];
     applyOnConfigure(ColorTextNode);
     LiteGraph.registerNodeType("values/colorText", ColorTextNode);
 
@@ -901,6 +927,7 @@ function registerAllNodes() {
     FormatTextNode.title = "格式化文本";
     FormatTextNode.prototype.color = C.datFg;
     FormatTextNode.prototype.bgcolor = C.datBg;
+    FormatTextNode.prototype._propKeys = ["template"];
     applyOnConfigure(FormatTextNode);
     LiteGraph.registerNodeType("values/formatText", FormatTextNode);
 
@@ -915,13 +942,173 @@ function registerAllNodes() {
     PlayerNameNode.prototype.bgcolor = C.plrBg;
     LiteGraph.registerNodeType("values/playerName", PlayerNameNode);
 
+    // 获取参数项节点
+    function GetArgNode() {
+        this.addInput("执行流", "exec");
+        this.addOutput("执行流", "exec");
+        this.addInput("参数列表", "string");
+        this.addInput("索引", "number");
+        this.addOutput("参数值", "string");
+        this.addProperty("索引", 0);
+        this.addWidget("number", "索引", 0, (v) => { this.properties["索引"] = v; setTimeout(regenerateAll, 80); });
+        this.size = [200, 90];
+        this.shape = LiteGraph.BOX_SHAPE;
+    }
+    GetArgNode.title = "获取参数项";
+    GetArgNode.prototype.color = C.cmdFg;
+    GetArgNode.prototype.bgcolor = C.cmdBg;
+    GetArgNode.prototype.onConfigure = function () {
+        if (this.widgets) {
+            this.widgets.forEach(w => {
+                if (w.name === "索引" && this.properties["索引"] != null) w.value = this.properties["索引"];
+            });
+        }
+        setTimeout(regenerateAll, 80);
+    };
+    applyOnConfigure(GetArgNode);
+    LiteGraph.registerNodeType("command/getArg", GetArgNode);
+
+    // 根据名字获取玩家节点
+    function GetPlayerByNameNode() {
+        this.addInput("玩家名", "string");
+        this.addOutput("玩家", "player");
+        this.size = [190, 50];
+        this.shape = LiteGraph.BOX_SHAPE;
+    }
+    GetPlayerByNameNode.title = "根据名字获取玩家";
+    GetPlayerByNameNode.prototype.color = C.plrFg;
+    GetPlayerByNameNode.prototype.bgcolor = C.plrBg;
+    LiteGraph.registerNodeType("player/getByName", GetPlayerByNameNode);
+
+    // 字符串转数字节点
+    function StringToNumberNode() {
+        this.addInput("字符串", "string");
+        this.addOutput("数字", "number");
+        this.size = [160, 50];
+        this.shape = LiteGraph.BOX_SHAPE;
+    }
+    StringToNumberNode.title = "字符串转数字";
+    StringToNumberNode.prototype.color = C.datFg;
+    StringToNumberNode.prototype.bgcolor = C.datBg;
+    LiteGraph.registerNodeType("convert/stringToNumber", StringToNumberNode);
+
+    function GetArgCountNode() {
+        this.addOutput("参数个数", "number");
+        this.size = [160, 50];
+        this.shape = LiteGraph.BOX_SHAPE;
+    }
+    GetArgCountNode.title = "参数个数";
+    GetArgCountNode.prototype.color = C.cmdFg;
+    GetArgCountNode.prototype.bgcolor = C.cmdBg;
+    LiteGraph.registerNodeType("command/argCount", GetArgCountNode);
+
+    //  变量存储 
+
+    function SetVarNode() {
+        this.addInput("执行流", "exec");
+        this.addOutput("执行流", "exec");
+        this.addInput("值(字符串)", "string");
+        this.addInput("值(数字)", "number");
+        this.addProperty("变量名", "myVar");
+        this.addProperty("类型", "string");
+        this.addWidget("text", "变量名", "myVar", (v) => { this.properties["变量名"] = v; setTimeout(regenerateAll, 80); });
+        this.addWidget("combo", "值类型", "string", (v) => { this.properties["类型"] = v; setTimeout(regenerateAll, 80); },
+            { values: ["string", "number"] });
+        this.size = [220, 105];
+        this.shape = LiteGraph.BOX_SHAPE;
+    }
+    SetVarNode.title = "设置变量";
+    SetVarNode.prototype.color = C.varFg;
+    SetVarNode.prototype.bgcolor = C.varBg;
+    SetVarNode.prototype._propKeys = ["变量名", "类型"];
+    applyOnConfigure(SetVarNode);
+    LiteGraph.registerNodeType("vars/setVar", SetVarNode);
+
+    function GetVarStrNode() {
+        this.addOutput("字符串值", "string");
+        this.addProperty("变量名", "myVar");
+        this.addWidget("text", "变量名", "myVar", (v) => { this.properties["变量名"] = v; setTimeout(regenerateAll, 80); });
+        this.size = [200, 65];
+        this.shape = LiteGraph.BOX_SHAPE;
+    }
+    GetVarStrNode.title = "获取字符串变量";
+    GetVarStrNode.prototype.color = C.varFg;
+    GetVarStrNode.prototype.bgcolor = C.varBg;
+    applyOnConfigure(GetVarStrNode);
+    LiteGraph.registerNodeType("vars/getVarStr", GetVarStrNode);
+
+    function GetVarNumNode() {
+        this.addOutput("数字值", "number");
+        this.addProperty("变量名", "myVar");
+        this.addWidget("text", "变量名", "myVar", (v) => { this.properties["变量名"] = v; setTimeout(regenerateAll, 80); });
+        this.size = [200, 65];
+        this.shape = LiteGraph.BOX_SHAPE;
+    }
+    GetVarNumNode.title = "获取数字变量";
+    GetVarNumNode.prototype.color = C.varFg;
+    GetVarNumNode.prototype.bgcolor = C.varBg;
+    applyOnConfigure(GetVarNumNode);
+    LiteGraph.registerNodeType("vars/getVarNum", GetVarNumNode);
+
+    //  类型转换
+
+    defNode("convert/numToStr", "数字转字符串", function () {
+        this.addInput("数值", "number");
+        this.addOutput("字符串", "string");
+        this.size = [190, 55];
+    }, C.cvtFg, C.cvtBg);
+
+    defNode("convert/strToPlayer", "字符串获取玩家", function () {
+        this.addInput("玩家名", "string");
+        this.addOutput("玩家", "player");
+        this.size = [190, 55];
+    }, C.cvtFg, C.cvtBg);
+
+    defNode("convert/numToInt", "数字取整", function () {
+        this.addInput("数值", "number");
+        this.addOutput("整数", "number");
+        this.size = [170, 55];
+    }, C.cvtFg, C.cvtBg);
+
+    defNode("convert/playerToName", "玩家转名字", function () {
+        this.addInput("玩家", "player");
+        this.addOutput("名字", "string");
+        this.size = [170, 55];
+    }, C.cvtFg, C.cvtBg);
+
+    defNode("convert/numAbsVal", "数字绝对值", function () {
+        this.addInput("数值", "number");
+        this.addOutput("绝对值", "number");
+        this.size = [170, 55];
+    }, C.cvtFg, C.cvtBg);
+
+    // 类型判断节点
+    function CheckTypeNode() {
+        this.addInput("执行流", "exec");
+        this.addInput("待检查字符串", "string");
+        this.addOutput("成功", "exec");
+        this.addOutput("失败", "exec");
+        this.addProperty("类型", "数字");
+        this.addWidget("combo", "类型", "数字", (v) => {
+            this.properties["类型"] = v;
+            setTimeout(regenerateAll, 80);
+        }, { values: ["数字", "整数", "非空字符串"] });
+        this.size = [220, 90];
+        this.shape = LiteGraph.BOX_SHAPE;
+    }
+    CheckTypeNode.title = "类型判断";
+    CheckTypeNode.prototype.color = C.lgcFg;
+    CheckTypeNode.prototype.bgcolor = C.lgcBg;
+    applyOnConfigure(CheckTypeNode);
+    LiteGraph.registerNodeType("logic/checkType", CheckTypeNode);
+
     //  端口颜色配置 
     LiteGraph.slot_types_default_out = LiteGraph.slot_types_default_out || {};
-    LiteGraph.slot_types_default_out["exec"]     = { color_off: "#ffaa00", color_on: "#ffcc44" };
-    LiteGraph.slot_types_default_out["string"]   = { color_off: "#4caf50", color_on: "#66bb6a" };
-    LiteGraph.slot_types_default_out["player"]   = { color_off: "#00bcd4", color_on: "#4dd0e1" };
-    LiteGraph.slot_types_default_out["number"]   = { color_off: "#ff9800", color_on: "#ffb74d" };
+    LiteGraph.slot_types_default_out["exec"] = { color_off: "#ffaa00", color_on: "#ffcc44" };
+    LiteGraph.slot_types_default_out["string"] = { color_off: "#4caf50", color_on: "#66bb6a" };
+    LiteGraph.slot_types_default_out["player"] = { color_off: "#00bcd4", color_on: "#4dd0e1" };
+    LiteGraph.slot_types_default_out["number"] = { color_off: "#ff9800", color_on: "#ffb74d" };
     LiteGraph.slot_types_default_out["location"] = { color_off: "#26c6da", color_on: "#80deea" };
-    LiteGraph.slot_types_default_out["boolean"]  = { color_off: "#ec407a", color_on: "#f48fb1" };
-    LiteGraph.slot_types_default_out["entity"]   = { color_off: "#ef5350", color_on: "#ef9a9a" };
+    LiteGraph.slot_types_default_out["boolean"] = { color_off: "#ec407a", color_on: "#f48fb1" };
+    LiteGraph.slot_types_default_out["entity"] = { color_off: "#ef5350", color_on: "#ef9a9a" };
 }

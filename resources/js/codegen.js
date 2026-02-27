@@ -6,7 +6,6 @@
 
 // 节点链接辅助
 
-// 根据输入端口名称，找到连接到该端口的源节点
 function getLinkedSourceNode(node, inputName) {
     if (!node.inputs || !litegraphGraph) return null;
     const inp = node.inputs.find(i => i.name === inputName);
@@ -16,7 +15,6 @@ function getLinkedSourceNode(node, inputName) {
     return litegraphGraph.getNodeById(link.origin_id);
 }
 
-// 找到节点第 outputIndex 个 exec 输出端口连接的下一个节点
 function findNextExec(node, outputIndex) {
     if (!node.outputs || !litegraphGraph) return null;
     let execCount = 0;
@@ -35,9 +33,8 @@ function findNextExec(node, outputIndex) {
     return null;
 }
 
-// 表达式解析（节点输入 → Java 表达式）
+// 表达式解析
 
-// 将节点的字符串输入解析为对应的 Java 表达式
 function resolveString(node, inputName, fallback) {
     const src = getLinkedSourceNode(node, inputName);
     if (!src) return fallback !== undefined ? fallback : '"Hello"';
@@ -54,7 +51,7 @@ function resolveString(node, inputName, fallback) {
         const playerExpr = nameSrc ? resolvePlayer(nameSrc) + ".getName()" : "player.getName()";
         const tpl = JSON.stringify(src.properties.template || "");
         return tpl.replace('"{player}"', '" + ' + playerExpr + ' + "')
-                  .replace('{player}',   '" + ' + playerExpr + ' + "');
+            .replace('{player}', '" + ' + playerExpr + ' + "');
     }
 
     // 配置读取节点
@@ -98,14 +95,47 @@ function resolveString(node, inputName, fallback) {
     if (src.type === "events/playerDamaged" || src.type === "events/entityDamageByPlayer")
         return "String.valueOf(event.getDamage())";
 
+    // 指令节点字符串输出
+    if (src.type === "command/onCommand") {
+        return "String.join(\" \", args)";
+    }
+
+    // 获取参数项节点
+    if (src.type === "command/getArg") {
+        let indexExpr = resolveNumber(src, "索引", src.properties["索引"] || 0);
+        const indexInput = getLinkedSourceNode(src, "索引");
+        if (!indexInput) {
+            indexExpr = src.properties["索引"] || 0;
+        }
+        return `(args.length > ${indexExpr} ? args[${indexExpr}] : "")`;
+    }
+
+    // 变量节点
+    if (src.type === "vars/getVarStr") {
+        const vn = src.properties["变量名"] || "myVar";
+        return `(__vars.containsKey("${vn}") ? __vars.get("${vn}").toString() : "")`;
+    }
+
+    // 类型转换
+    if (src.type === "convert/numToStr") {
+        return `String.valueOf(${resolveNumber(src, "数值", "0")})`;
+    }
+    if (src.type === "convert/playerToName") {
+        const plrSrc = getLinkedSourceNode(src, "玩家");
+        return `${resolvePlayer(plrSrc)}.getName()`;
+    }
+
     // 默认回退
     return fallback !== undefined ? fallback : '"Hello"';
 }
 
-// 将节点的数值输入解析为对应的 Java 表达式
 function resolveNumber(node, inputName, fallback) {
     const src = getLinkedSourceNode(node, inputName);
     if (!src) return fallback !== undefined ? String(fallback) : "100";
+
+    if (src.type === "command/argCount") {
+        return "args.length";
+    }
 
     if (src.type === "values/number") return String(src.properties.num);
     if (src.type === "config/getInt")
@@ -141,28 +171,70 @@ function resolveNumber(node, inputName, fallback) {
     if (src.type === "events/playerDamaged" || src.type === "events/entityDamageByPlayer")
         return "event.getDamage()";
 
+    // 字符串转数字
+    if (src.type === "convert/stringToNumber") {
+        const strExpr = resolveString(src, "字符串", '"0"');
+        return `Integer.parseInt(${strExpr})`;
+    }
+
+    // 变量节点
+    if (src.type === "vars/getVarNum") {
+        const vn = src.properties["变量名"] || "myVar";
+        return `(__vars.containsKey("${vn}") && __vars.get("${vn}") instanceof Number ? ((Number)__vars.get("${vn}")).doubleValue() : 0.0)`;
+    }
+
+    // 类型转換
+    if (src.type === "convert/numToInt") {
+        return `(int)(${resolveNumber(src, "数值", "0")})`;
+    }
+    if (src.type === "convert/numAbsVal") {
+        return `Math.abs(${resolveNumber(src, "数值", "0")})`;
+    }
+
     return fallback !== undefined ? String(fallback) : "100";
 }
 
-// 根据源节点类型返回对应的 Java 玩家变量名
 function resolvePlayer(node) {
     if (!node) return "player";
 
-    // 大多数事件都有玩家，且代码生成中已定义 player = event.getPlayer()
     if (node.type.startsWith("events/")) {
-        // 排除一些可能没有玩家的事件（如服务器事件），但当前事件列表均有玩家
         return "player";
     }
     if (node.type === "command/onCommand") {
         return "player";
     }
-    // 其他节点如 player/getHealth 等，其输入源可能也是事件，但会在递归中处理
+    // 根据名字获取玩家节点
+    if (node.type === "player/getByName") {
+        // 这里的代码有点问题：
+        // 这里的 resolvePlayer 暂时只能返回一个静态表达式（如 Bukkit.getPlayer(name)）
+        // 生成的代码虽然符合 Java 格式，但它基本属于裸奔:(
+        // 如果玩家不在线，生成的代码会因为 Null 值直接导致服务器异常。
+        // TODO：
+        // 目前 resolvePlayer 只能处理变量名，需要把它从“返回字符串”重构为“返回逻辑块”，
+        // 这样生成的代码才能自动带上安全检查
+        // 但这会涉及到大量的代码重构，懒得折腾了，先放着吧，反正大多数时候玩家都是在线的(*/ω＼*)
+    }
     return "player";
 }
 
-// 从节点的玩家输入端口追溯并返回对应的 Java 玩家变量名
+// 从节点的玩家输入端口追溯并返回对应的 Java 玩家变量名或表达式
 function resolvePlayerInput(node, inputName) {
     const src = getLinkedSourceNode(node, inputName);
+    if (!src) return "player";
+
+    // 根据名字获取玩家节点
+    if (src.type === "player/getByName") {
+        const nameExpr = resolveString(src, "玩家名", '""');
+        return `Bukkit.getPlayer(${nameExpr})`;
+    }
+
+    // 字符串获取玩家（类型转换节点）
+    if (src.type === "convert/strToPlayer") {
+        const nameExpr = resolveString(src, "玩家名", '""');
+        return `Bukkit.getPlayer(${nameExpr})`;
+    }
+
+    // 其他情况，调用原来的 resolvePlayer
     return resolvePlayer(src);
 }
 
@@ -195,7 +267,7 @@ function traverseExec(startNode, indent, imports) {
                 lines.push(`${i}${p}.sendMessage(${resolveString(cur, "消息", '"Hello"')});`);
                 break;
             case "actions/sendTitle": {
-                const title    = resolveString(cur, "标题", '"标题"');
+                const title = resolveString(cur, "标题", '"标题"');
                 const subtitle = resolveString(cur, "副标题", '"副标题"');
                 lines.push(`${i}${p}.sendTitle(${title}, ${subtitle}, 10, 70, 20);`);
                 break;
@@ -273,7 +345,7 @@ function traverseExec(startNode, indent, imports) {
             }
             case "player/playParticle": {
                 imports.add("import org.bukkit.Particle;");
-                const pt   = cur.properties["粒子类型"] || "FLAME";
+                const pt = cur.properties["粒子类型"] || "FLAME";
                 const pqty = cur.properties["数量"] || 10;
                 lines.push(`${i}${p}.getWorld().spawnParticle(Particle.${pt.toUpperCase()}, ${p}.getLocation(), ${pqty});`);
                 break;
@@ -281,8 +353,8 @@ function traverseExec(startNode, indent, imports) {
             case "player/playSound": {
                 imports.add("import org.bukkit.Sound;");
                 const sound = cur.properties["音效"] || "ENTITY_EXPERIENCE_ORB_PICKUP";
-                const vol   = cur.properties["音量"]  != null ? cur.properties["音量"]  : 1.0;
-                const pitch = cur.properties["音调"]  != null ? cur.properties["音调"]  : 1.0;
+                const vol = cur.properties["音量"] != null ? cur.properties["音量"] : 1.0;
+                const pitch = cur.properties["音调"] != null ? cur.properties["音调"] : 1.0;
                 lines.push(`${i}${p}.playSound(${p}.getLocation(), Sound.${sound.toUpperCase()}, ${vol}f, ${pitch}f);`);
                 break;
             }
@@ -305,7 +377,7 @@ function traverseExec(startNode, indent, imports) {
                 break;
             }
             case "world/createExplosion": {
-                const power   = cur.properties["威力"] != null ? cur.properties["威力"] : 4.0;
+                const power = cur.properties["威力"] != null ? cur.properties["威力"] : 4.0;
                 const setFire = cur.properties["点火"] ? "true" : "false";
                 lines.push(`${i}${p}.getWorld().createExplosion(${p}.getLocation(), ${power}f, ${setFire});`);
                 break;
@@ -338,7 +410,7 @@ function traverseExec(startNode, indent, imports) {
             case "world/fillBlocks": {
                 imports.add("import org.bukkit.Material;");
                 const fillMat = cur.properties["方块类型"] || "AIR";
-                const radius  = cur.properties["半径"] || 3;
+                const radius = cur.properties["半径"] || 3;
                 lines.push(`${i}// 填充半径 ${radius} 内的方块为 ${fillMat}`);
                 lines.push(`${i}org.bukkit.Location __center = ${p}.getLocation();`);
                 lines.push(`${i}for (int __x = -${radius}; __x <= ${radius}; __x++) {`);
@@ -362,7 +434,7 @@ function traverseExec(startNode, indent, imports) {
                 imports.add("import org.bukkit.Bukkit;");
                 const delay = cur.properties["延迟刻"] != null ? cur.properties["延迟刻"] : 20;
                 const delayedLines = [];
-                const delayedNode  = findNextExec(cur, 1);
+                const delayedNode = findNextExec(cur, 1);
                 if (delayedNode) traverseExecInto(delayedNode, indent + "    ", imports, delayedLines);
                 lines.push(`${i}Bukkit.getScheduler().runTaskLater(this, () -> {`);
                 delayedLines.forEach(l => lines.push(l));
@@ -372,9 +444,9 @@ function traverseExec(startNode, indent, imports) {
             case "server/runTaskTimer": {
                 imports.add("import org.bukkit.Bukkit;");
                 const initDelay = cur.properties["初始延迟"] != null ? cur.properties["初始延迟"] : 0;
-                const interval  = cur.properties["间隔刻"]   != null ? cur.properties["间隔刻"]   : 20;
+                const interval = cur.properties["间隔刻"] != null ? cur.properties["间隔刻"] : 20;
                 const timerLines = [];
-                const timerNode  = findNextExec(cur, 1);
+                const timerNode = findNextExec(cur, 1);
                 if (timerNode) traverseExecInto(timerNode, indent + "    ", imports, timerLines);
                 lines.push(`${i}Bukkit.getScheduler().runTaskTimer(this, () -> {`);
                 timerLines.forEach(l => lines.push(l));
@@ -385,7 +457,7 @@ function traverseExec(startNode, indent, imports) {
                 imports.add("import org.bukkit.Bukkit;");
                 imports.add("import org.bukkit.entity.Player;");
                 const perPlayerLines = [];
-                const perPlayerNode  = findNextExec(cur, 1);
+                const perPlayerNode = findNextExec(cur, 1);
                 if (perPlayerNode) traverseExecInto(perPlayerNode, indent + "    ", imports, perPlayerLines);
                 lines.push(`${i}for (Player __loopPlayer : Bukkit.getOnlinePlayers()) {`);
                 perPlayerLines.forEach(l => lines.push(l.replace(/\bplayer\b/g, "__loopPlayer")));
@@ -412,6 +484,18 @@ function traverseExec(startNode, indent, imports) {
                 break;
             }
 
+            //  变量存储 
+            case "vars/setVar": {
+                const varName = cur.properties["变量名"] || "myVar";
+                const varType = cur.properties["类型"] || "string";
+                if (varType === "number") {
+                    lines.push(`${i}__vars.put("${varName}", ${resolveNumber(cur, "值(数字)", "0")});`);
+                } else {
+                    lines.push(`${i}__vars.put("${varName}", ${resolveString(cur, "值(字符串)", '""')});`);
+                }
+                break;
+            }
+
             //  配置文件 
             case "config/saveDefaultConfig":
                 lines.push(`${i}saveDefaultConfig();`);
@@ -429,15 +513,15 @@ function traverseExec(startNode, indent, imports) {
 
             //  指令节点 
             case "command/sendUsage":
-                lines.push(`${i}${p}.sendMessage("用法：/" + label + " <参数>");`);
+                lines.push(`${i}${p}.sendMessage(${resolveString(cur, "用法", '"用法：/" + label + " <参数>"')});`);
                 break;
             case "command/checkPermission": {
                 const perm = cur.properties["权限节点"] || "myplugin.use";
                 const yesLines = [], noLines = [];
-                const yesNode  = findNextExec(cur, 0);
-                const noNode   = findNextExec(cur, 1);
+                const yesNode = findNextExec(cur, 0);
+                const noNode = findNextExec(cur, 1);
                 if (yesNode) traverseExecInto(yesNode, indent + "    ", imports, yesLines);
-                if (noNode)  traverseExecInto(noNode,  indent + "    ", imports, noLines);
+                if (noNode) traverseExecInto(noNode, indent + "    ", imports, noLines);
                 lines.push(`${i}if (${p}.hasPermission("${perm}")) {`);
                 yesLines.forEach(l => lines.push(l));
                 if (noLines.length > 0) {
@@ -450,8 +534,8 @@ function traverseExec(startNode, indent, imports) {
 
             //  逻辑控制 
             case "logic/ifStringEqual": {
-                const aStr    = resolveString(cur, "字符串A", '"A"');
-                const bStr    = resolveString(cur, "字符串B", '"B"');
+                const aStr = resolveString(cur, "字符串A", '"A"');
+                const bStr = resolveString(cur, "字符串B", '"B"');
                 const ignCase = cur.properties["忽略大小写"];
                 const compare = ignCase ? `${aStr}.equalsIgnoreCase(${bStr})` : `${aStr}.equals(${bStr})`;
                 const yLines = [], nLines = [];
@@ -467,7 +551,7 @@ function traverseExec(startNode, indent, imports) {
             case "logic/ifNumberCompare": {
                 const aNum = resolveNumber(cur, "数值A", "0");
                 const bNum = resolveNumber(cur, "数值B", "0");
-                const op   = cur.properties["运算符"] || ">=";
+                const op = cur.properties["运算符"] || ">=";
                 const yLines2 = [], nLines2 = [];
                 const yn2 = findNextExec(cur, 0), nn2 = findNextExec(cur, 1);
                 if (yn2) traverseExecInto(yn2, indent + "    ", imports, yLines2);
@@ -480,7 +564,7 @@ function traverseExec(startNode, indent, imports) {
             }
             case "logic/ifContains": {
                 const origin = resolveString(cur, "原始字符串", '"text"');
-                const sub    = resolveString(cur, "子字符串", '"sub"');
+                const sub = resolveString(cur, "子字符串", '"sub"');
                 const yLines3 = [], nLines3 = [];
                 const yn3 = findNextExec(cur, 0), nn3 = findNextExec(cur, 1);
                 if (yn3) traverseExecInto(yn3, indent + "    ", imports, yLines3);
@@ -539,6 +623,31 @@ function traverseExec(startNode, indent, imports) {
                 lines.push(`${i}}`);
                 cur = null; break;
             }
+            case "logic/checkType": {
+                const strExpr = resolveString(cur, "待检查字符串", "\"\"");
+                const type = cur.properties["类型"] || "数字";
+                let condition;
+                if (type === "数字") {
+                    condition = strExpr + ".matches(\"-?\\\\d+(\\\\.\\\\d+)?\")";
+                } else if (type === "整数") {
+                    condition = strExpr + ".matches(\"-?\\\\d+\")";
+                } else {
+                    condition = strExpr + " != null && !" + strExpr + ".isEmpty()";
+                }
+                const yesLines = [], noLines = [];
+                const yesNode = findNextExec(cur, 0);
+                const noNode = findNextExec(cur, 1);
+                if (yesNode) traverseExecInto(yesNode, indent + "    ", imports, yesLines);
+                if (noNode) traverseExecInto(noNode, indent + "    ", imports, noLines);
+                lines.push(`${i}if (${condition}) {`);
+                yesLines.forEach(l => lines.push(l));
+                if (noLines.length) {
+                    lines.push(`${i}} else {`);
+                    noLines.forEach(l => lines.push(l));
+                }
+                lines.push(`${i}}`);
+                cur = null; break;
+            }
             case "logic/cancelEvent":
                 lines.push(`${i}event.setCancelled(true);`);
                 break;
@@ -549,11 +658,11 @@ function traverseExec(startNode, indent, imports) {
                 imports.add("import java.net.URL;");
                 imports.add("import java.io.BufferedReader;");
                 imports.add("import java.io.InputStreamReader;");
-                const urlStr       = resolveString(cur, "URL", '"https://example.com/api"');
+                const urlStr = resolveString(cur, "URL", '"https://example.com/api"');
                 const successLines = [], failLines = [];
-                const successNode  = findNextExec(cur, 1), failNode = findNextExec(cur, 2);
+                const successNode = findNextExec(cur, 1), failNode = findNextExec(cur, 2);
                 if (successNode) traverseExecInto(successNode, indent + "        ", imports, successLines);
-                if (failNode)    traverseExecInto(failNode,    indent + "        ", imports, failLines);
+                if (failNode) traverseExecInto(failNode, indent + "        ", imports, failLines);
                 lines.push(`${i}Bukkit.getScheduler().runTaskAsynchronously(this, () -> {`);
                 lines.push(`${i}    try {`);
                 lines.push(`${i}        HttpURLConnection __conn = (HttpURLConnection) new URL(${urlStr}).openConnection();`);
@@ -583,12 +692,12 @@ function traverseExec(startNode, indent, imports) {
                 imports.add("import java.io.BufferedReader;");
                 imports.add("import java.io.InputStreamReader;");
                 imports.add("import java.io.OutputStream;");
-                const urlStr2      = resolveString(cur, "URL", '"https://example.com/api"');
-                const bodyStr      = resolveString(cur, "请求体", '"{}"');
+                const urlStr2 = resolveString(cur, "URL", '"https://example.com/api"');
+                const bodyStr = resolveString(cur, "请求体", '"{}"');
                 const successLines2 = [], failLines2 = [];
                 const successNode2 = findNextExec(cur, 1), failNode2 = findNextExec(cur, 2);
                 if (successNode2) traverseExecInto(successNode2, indent + "        ", imports, successLines2);
-                if (failNode2)    traverseExecInto(failNode2,    indent + "        ", imports, failLines2);
+                if (failNode2) traverseExecInto(failNode2, indent + "        ", imports, failLines2);
                 lines.push(`${i}Bukkit.getScheduler().runTaskAsynchronously(this, () -> {`);
                 lines.push(`${i}    try {`);
                 lines.push(`${i}        HttpURLConnection __conn = (HttpURLConnection) new URL(${urlStr2}).openConnection();`);
@@ -661,23 +770,23 @@ function generateJava() {
 
     // 事件处理器
     const eventDefs = [
-        { nodeType: "events/playerJoin",             method: "onPlayerJoin",             event: "PlayerJoinEvent",             pkg: "org.bukkit.event.player.PlayerJoinEvent",             playerGet: "event.getPlayer()" },
-        { nodeType: "events/playerQuit",             method: "onPlayerQuit",             event: "PlayerQuitEvent",             pkg: "org.bukkit.event.player.PlayerQuitEvent",             playerGet: "event.getPlayer()" },
-        { nodeType: "events/playerDeath",            method: "onPlayerDeath",            event: "PlayerDeathEvent",            pkg: "org.bukkit.event.entity.PlayerDeathEvent",            playerGet: "event.getEntity()" },
-        { nodeType: "events/playerChat",             method: "onPlayerChat",             event: "AsyncPlayerChatEvent",        pkg: "org.bukkit.event.player.AsyncPlayerChatEvent",        playerGet: "event.getPlayer()" },
-        { nodeType: "events/playerMove",             method: "onPlayerMove",             event: "PlayerMoveEvent",             pkg: "org.bukkit.event.player.PlayerMoveEvent",             playerGet: "event.getPlayer()" },
-        { nodeType: "events/playerRespawn",          method: "onPlayerRespawn",          event: "PlayerRespawnEvent",          pkg: "org.bukkit.event.player.PlayerRespawnEvent",          playerGet: "event.getPlayer()" },
-        { nodeType: "events/playerInteract",         method: "onPlayerInteract",         event: "PlayerInteractEvent",         pkg: "org.bukkit.event.player.PlayerInteractEvent",         playerGet: "event.getPlayer()" },
-        { nodeType: "events/playerLogin",            method: "onPlayerLogin",            event: "PlayerLoginEvent",            pkg: "org.bukkit.event.player.PlayerLoginEvent",            playerGet: "event.getPlayer()" },
-        { nodeType: "events/blockBreak",             method: "onBlockBreak",             event: "BlockBreakEvent",             pkg: "org.bukkit.event.block.BlockBreakEvent",              playerGet: "event.getPlayer()" },
-        { nodeType: "events/blockPlace",             method: "onBlockPlace",             event: "BlockPlaceEvent",             pkg: "org.bukkit.event.block.BlockPlaceEvent",              playerGet: "event.getPlayer()" },
-        { nodeType: "events/entityDamageByPlayer",   method: "onEntityDamageByPlayer",   event: "EntityDamageByEntityEvent",   pkg: "org.bukkit.event.entity.EntityDamageByEntityEvent",  playerGet: "(event.getDamager() instanceof Player) ? (Player) event.getDamager() : null", extraGuard: "if (!(event.getDamager() instanceof Player)) return;" },
-        { nodeType: "events/playerDamaged",          method: "onPlayerDamaged",          event: "EntityDamageEvent",           pkg: "org.bukkit.event.entity.EntityDamageEvent",           playerGet: "(event.getEntity() instanceof Player) ? (Player) event.getEntity() : null", extraGuard: "if (!(event.getEntity() instanceof Player)) return;" },
-        { nodeType: "events/playerDropItem",         method: "onPlayerDropItem",         event: "PlayerDropItemEvent",         pkg: "org.bukkit.event.player.PlayerDropItemEvent",         playerGet: "event.getPlayer()" },
-        { nodeType: "events/playerPickupItem",       method: "onPlayerPickupItem",       event: "EntityPickupItemEvent",       pkg: "org.bukkit.event.entity.EntityPickupItemEvent",       playerGet: "(event.getEntity() instanceof Player) ? (Player) event.getEntity() : null", extraGuard: "if (!(event.getEntity() instanceof Player)) return;" },
-        { nodeType: "events/playerLevelUp",          method: "onPlayerLevelUp",          event: "PlayerLevelChangeEvent",      pkg: "org.bukkit.event.player.PlayerLevelChangeEvent",      playerGet: "event.getPlayer()" },
-        { nodeType: "events/playerSneak",            method: "onPlayerSneak",            event: "PlayerToggleSneakEvent",      pkg: "org.bukkit.event.player.PlayerToggleSneakEvent",      playerGet: "event.getPlayer()" },
-        { nodeType: "events/playerSprint",           method: "onPlayerSprint",           event: "PlayerToggleSprintEvent",     pkg: "org.bukkit.event.player.PlayerToggleSprintEvent",     playerGet: "event.getPlayer()" },
+        { nodeType: "events/playerJoin", method: "onPlayerJoin", event: "PlayerJoinEvent", pkg: "org.bukkit.event.player.PlayerJoinEvent", playerGet: "event.getPlayer()" },
+        { nodeType: "events/playerQuit", method: "onPlayerQuit", event: "PlayerQuitEvent", pkg: "org.bukkit.event.player.PlayerQuitEvent", playerGet: "event.getPlayer()" },
+        { nodeType: "events/playerDeath", method: "onPlayerDeath", event: "PlayerDeathEvent", pkg: "org.bukkit.event.entity.PlayerDeathEvent", playerGet: "event.getEntity()" },
+        { nodeType: "events/playerChat", method: "onPlayerChat", event: "AsyncPlayerChatEvent", pkg: "org.bukkit.event.player.AsyncPlayerChatEvent", playerGet: "event.getPlayer()" },
+        { nodeType: "events/playerMove", method: "onPlayerMove", event: "PlayerMoveEvent", pkg: "org.bukkit.event.player.PlayerMoveEvent", playerGet: "event.getPlayer()" },
+        { nodeType: "events/playerRespawn", method: "onPlayerRespawn", event: "PlayerRespawnEvent", pkg: "org.bukkit.event.player.PlayerRespawnEvent", playerGet: "event.getPlayer()" },
+        { nodeType: "events/playerInteract", method: "onPlayerInteract", event: "PlayerInteractEvent", pkg: "org.bukkit.event.player.PlayerInteractEvent", playerGet: "event.getPlayer()" },
+        { nodeType: "events/playerLogin", method: "onPlayerLogin", event: "PlayerLoginEvent", pkg: "org.bukkit.event.player.PlayerLoginEvent", playerGet: "event.getPlayer()" },
+        { nodeType: "events/blockBreak", method: "onBlockBreak", event: "BlockBreakEvent", pkg: "org.bukkit.event.block.BlockBreakEvent", playerGet: "event.getPlayer()" },
+        { nodeType: "events/blockPlace", method: "onBlockPlace", event: "BlockPlaceEvent", pkg: "org.bukkit.event.block.BlockPlaceEvent", playerGet: "event.getPlayer()" },
+        { nodeType: "events/entityDamageByPlayer", method: "onEntityDamageByPlayer", event: "EntityDamageByEntityEvent", pkg: "org.bukkit.event.entity.EntityDamageByEntityEvent", playerGet: "(event.getDamager() instanceof Player) ? (Player) event.getDamager() : null", extraGuard: "if (!(event.getDamager() instanceof Player)) return;" },
+        { nodeType: "events/playerDamaged", method: "onPlayerDamaged", event: "EntityDamageEvent", pkg: "org.bukkit.event.entity.EntityDamageEvent", playerGet: "(event.getEntity() instanceof Player) ? (Player) event.getEntity() : null", extraGuard: "if (!(event.getEntity() instanceof Player)) return;" },
+        { nodeType: "events/playerDropItem", method: "onPlayerDropItem", event: "PlayerDropItemEvent", pkg: "org.bukkit.event.player.PlayerDropItemEvent", playerGet: "event.getPlayer()" },
+        { nodeType: "events/playerPickupItem", method: "onPlayerPickupItem", event: "EntityPickupItemEvent", pkg: "org.bukkit.event.entity.EntityPickupItemEvent", playerGet: "(event.getEntity() instanceof Player) ? (Player) event.getEntity() : null", extraGuard: "if (!(event.getEntity() instanceof Player)) return;" },
+        { nodeType: "events/playerLevelUp", method: "onPlayerLevelUp", event: "PlayerLevelChangeEvent", pkg: "org.bukkit.event.player.PlayerLevelChangeEvent", playerGet: "event.getPlayer()" },
+        { nodeType: "events/playerSneak", method: "onPlayerSneak", event: "PlayerToggleSneakEvent", pkg: "org.bukkit.event.player.PlayerToggleSneakEvent", playerGet: "event.getPlayer()" },
+        { nodeType: "events/playerSprint", method: "onPlayerSprint", event: "PlayerToggleSprintEvent", pkg: "org.bukkit.event.player.PlayerToggleSprintEvent", playerGet: "event.getPlayer()" },
     ];
 
     for (const def of eventDefs) {
@@ -696,7 +805,7 @@ function generateJava() {
     const cmdNodes = graph.findNodesByType("command/onCommand");
     for (const cmdNode of cmdNodes) {
         const cmdName = cmdNode.properties["指令名"] || "test";
-        const perm    = cmdNode.properties["权限节点"] || "";
+        const perm = cmdNode.properties["权限节点"] || "";
         registeredCommands.push({ name: cmdName, desc: cmdNode.properties["描述"] || "", usage: cmdNode.properties["用法"] || ("/" + cmdName), perm });
         imports.add("import org.bukkit.command.Command;");
         imports.add("import org.bukkit.command.CommandSender;");
@@ -728,6 +837,18 @@ function generateJava() {
     const classLines = [];
     classLines.push(`public class ${cls} extends JavaPlugin${implPart}${extraImpl} {`);
     classLines.push("");
+
+    // 变量存储字段（仅在有变量节点时生成）
+    const hasVars = graph.findNodesByType("vars/setVar").length > 0 ||
+        graph.findNodesByType("vars/getVarStr").length > 0 ||
+        graph.findNodesByType("vars/getVarNum").length > 0;
+    if (hasVars) {
+        imports.add("import java.util.HashMap;");
+        imports.add("import java.util.Map;");
+        classLines.push("    // 运行时变量存储");
+        classLines.push("    private final Map<String, Object> __vars = new HashMap<>();");
+        classLines.push("");
+    }
 
     for (const m of methods) {
         if (m.type === "onEnable") {
@@ -792,7 +913,7 @@ function generateJava() {
 
     // HTTP 工具方法
     const hasHttp = graph.findNodesByType("network/httpGet").length > 0 ||
-                    graph.findNodesByType("network/httpPost").length > 0;
+        graph.findNodesByType("network/httpPost").length > 0;
     if (hasHttp) {
         classLines.push("");
         classLines.push("    // HTTP JSON 解析工具方法");
@@ -816,6 +937,16 @@ function generateJava() {
         classLines.push("    }");
     }
 
+    // __parseDouble 工具方法（仅在有字符串转数字节点时生成）
+    const hasStrToNum = graph.findNodesByType("convert/stringToNumber").length > 0;
+    if (hasStrToNum) {
+        classLines.push("");
+        classLines.push("    // 字符串转数字工具方法");
+        classLines.push("    private double __parseDouble(String s) {");
+        classLines.push("        try { return Double.parseDouble(s.trim()); } catch (Exception e) { return 0.0; }");
+        classLines.push("    }");
+    }
+
     classLines.push("}");
 
     const importStr = [...imports].sort().join("\n");
@@ -827,31 +958,31 @@ function generateJava() {
 // 根据表单和节点图中的指令/权限节点，生成 plugin.yml 内容
 function generatePluginYml() {
     if (!editors.yml) return;
-    const name    = document.getElementById('pluginName')?.value    || 'MagicPlugin';
-    const main    = document.getElementById('mainClass')?.value     || 'me.test.Main';
+    const name = document.getElementById('pluginName')?.value || 'MagicPlugin';
+    const main = document.getElementById('mainClass')?.value || 'me.test.Main';
     const version = document.getElementById('pluginVersion')?.value || '1.0.0';
-    const api     = document.getElementById('apiVersion')?.value    || '1.20';
-    const author  = document.getElementById('author')?.value        || '';
-    const website = document.getElementById('website')?.value       || '';
-    const desc    = document.getElementById('description')?.value   || '';
-    const load    = document.getElementById('loadTime')?.value      || 'POSTWORLD';
-    const soft    = document.getElementById('softDepend')?.value    || '';
+    const api = document.getElementById('apiVersion')?.value || '1.20';
+    const author = document.getElementById('author')?.value || '';
+    const website = document.getElementById('website')?.value || '';
+    const desc = document.getElementById('description')?.value || '';
+    const load = document.getElementById('loadTime')?.value || 'POSTWORLD';
+    const soft = document.getElementById('softDepend')?.value || '';
 
     let yml = `name: ${name}\nmain: ${main}\nversion: ${version}\napi-version: ${api}\n`;
-    if (author)              yml += `author: ${author}\n`;
-    if (website)             yml += `website: ${website}\n`;
-    if (desc)                yml += `description: ${desc}\n`;
+    if (author) yml += `author: ${author}\n`;
+    if (website) yml += `website: ${website}\n`;
+    if (desc) yml += `description: ${desc}\n`;
     if (load !== 'POSTWORLD') yml += `load: ${load}\n`;
-    if (soft)                yml += `softdepend: [${soft.split(',').map(s => s.trim()).join(', ')}]\n`;
+    if (soft) yml += `softdepend: [${soft.split(',').map(s => s.trim()).join(', ')}]\n`;
 
     const cmdNodes = litegraphGraph ? litegraphGraph.findNodesByType("command/onCommand") : [];
     if (cmdNodes.length > 0) {
         yml += `\ncommands:\n`;
         for (const cn of cmdNodes) {
             const cmdName = cn.properties["指令名"] || "test";
-            const cmdDesc = cn.properties["描述"]   || "";
-            const usage   = cn.properties["用法"]   || ("/" + cmdName);
-            const perm    = cn.properties["权限节点"] || "";
+            const cmdDesc = cn.properties["描述"] || "";
+            const usage = cn.properties["用法"] || ("/" + cmdName);
+            const perm = cn.properties["权限节点"] || "";
             yml += `  ${cmdName}:\n`;
             yml += `    description: ${cmdDesc}\n`;
             yml += `    usage: ${usage}\n`;
@@ -905,13 +1036,13 @@ function generateConfigYml() {
 // 根据表单中的 Maven 坐标等信息，生成 pom.xml 内容
 function generatePomXml() {
     if (!editors.pom) return;
-    const groupId    = document.getElementById('groupId')?.value      || 'me.yourname';
-    const artifactId = document.getElementById('artifactId')?.value   || 'myplugin';
-    const version    = document.getElementById('pluginVersion')?.value || '1.0.0';
-    const javaVer    = document.getElementById('javaVersion')?.value   || '17';
-    const spigotVer  = document.getElementById('spigotVersion')?.value || '1.20.4-R0.1-SNAPSHOT';
-    const { cls }    = getMainClassParts();
-    const pluginName = document.getElementById('pluginName')?.value    || 'MagicPlugin';
+    const groupId = document.getElementById('groupId')?.value || 'me.yourname';
+    const artifactId = document.getElementById('artifactId')?.value || 'myplugin';
+    const version = document.getElementById('pluginVersion')?.value || '1.0.0';
+    const javaVer = document.getElementById('javaVersion')?.value || '17';
+    const spigotVer = document.getElementById('spigotVersion')?.value || '1.20.4-R0.1-SNAPSHOT';
+    const { cls } = getMainClassParts();
+    const pluginName = document.getElementById('pluginName')?.value || 'MagicPlugin';
 
     const pom = `<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"

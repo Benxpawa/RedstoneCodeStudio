@@ -45,9 +45,11 @@ function initLiteGraph() {
         "network": "<i class=\"fa-solid fa-network-wired\"></i> 网络请求",
         "config":  "<i class=\"fa-solid fa-gear\"></i> 配置文件",
         "values":  "<i class=\"fa-solid fa-database\"></i> 数据节点",
+        "vars":    "<i class=\"fa-solid fa-box-archive\"></i> 变量存储",
+        "convert": "<i class=\"fa-solid fa-shuffle\"></i> 类型转换",
     };
 
-    // 右键菜单：添加节点（按分类展开子菜单）
+    // 右键菜单
     function openAddNodeMenu(event, prev_menu) {
         const cats = {};
         for (const type of Object.keys(LiteGraph.registered_node_types)) {

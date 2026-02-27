@@ -31,4 +31,8 @@ const C = {
     lgcBg: "#1a1a00", lgcFg: "#7a7a00",
     netBg: "#150a2a", netFg: "#6a20b0",
     entBg: "#2a0a00", entFg: "#b03010",
+    // 变量存储
+    varBg: "#1a0a2a", varFg: "#8a30c0",
+    // 类型转换
+    cvtBg: "#081828", cvtFg: "#1a7ab0",
 };

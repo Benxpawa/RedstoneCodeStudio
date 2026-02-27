@@ -273,6 +273,24 @@
             color: #d07ef8;
         }
 
+        .node-item.vr {
+            border-color: #8a30c0;
+        }
+
+        .node-item.vr .node-type-badge {
+            background: #2a0a40;
+            color: #c87ef8;
+        }
+
+        .node-item.cvt {
+            border-color: #1a7ab0;
+        }
+
+        .node-item.cvt .node-type-badge {
+            background: #081828;
+            color: #7ec8f8;
+        }
+
         #blocklyDiv {
             flex: 1;
             background: #181b27;
@@ -705,6 +723,8 @@
                                     class="node-type-badge">指令</span></div>
                             <div class="node-item cmd" draggable="true" data-node="command/checkPermission">检查权限 <span
                                     class="node-type-badge">指令</span></div>
+                            <div class="node-item cmd" draggable="true" data-node="command/getArg">获取参数项 <span class="node-type-badge">指令</span></div>
+                            <div class="node-item cmd" draggable="true" data-node="command/argCount">参数个数 <span class="node-type-badge">指令</span></div>
                         </div>
                     </details>
 
@@ -869,6 +889,8 @@
                                     class="node-type-badge">逻辑</span></div>
                             <div class="node-item lgc" draggable="true" data-node="logic/strConcat">字符串拼接 <span
                                     class="node-type-badge">逻辑</span></div>
+                            <div class="node-item lgc" draggable="true" data-node="logic/checkType">类型判断 <span
+                                    class="node-type-badge">逻辑</span></div>
                         </div>
                     </details>
 
@@ -930,6 +952,34 @@
                                     class="node-type-badge">数据</span></div>
                             <div class="node-item dat" draggable="true" data-node="values/colorText">颜色文本 <span
                                     class="node-type-badge">数据</span></div>
+                        </div>
+                    </details>
+
+                    <details>
+                        <summary class="panel-section-title">
+                            <span>变量存储</span>
+                            <span class="section-arrow">▶</span>
+                        </summary>
+                        <div class="panel-section-body">
+                            <div class="node-item vr" draggable="true" data-node="vars/setVar">设置变量 <span class="node-type-badge">变量</span></div>
+                            <div class="node-item vr" draggable="true" data-node="vars/getVarStr">获取字符串变量 <span class="node-type-badge">变量</span></div>
+                            <div class="node-item vr" draggable="true" data-node="vars/getVarNum">获取数字变量 <span class="node-type-badge">变量</span></div>
+                        </div>
+                    </details>
+
+
+                    <details>
+                        <summary class="panel-section-title">
+                            <span>类型转换</span>
+                            <span class="section-arrow">▶</span>
+                        </summary>
+                        <div class="panel-section-body" style="padding-bottom:10px;">
+                            <div class="node-item cvt" draggable="true" data-node="convert/numToStr">数字转字符串 <span class="node-type-badge">转换</span></div>
+                            <div class="node-item cvt" draggable="true" data-node="convert/stringToNumber">字符串转数字 <span class="node-type-badge">转换</span></div>
+                            <div class="node-item cvt" draggable="true" data-node="convert/strToPlayer">字符串获取玩家 <span class="node-type-badge">转换</span></div>
+                            <div class="node-item cvt" draggable="true" data-node="convert/playerToName">玩家转名字 <span class="node-type-badge">转换</span></div>
+                            <div class="node-item cvt" draggable="true" data-node="convert/numToInt">数字取整 <span class="node-type-badge">转换</span></div>
+                            <div class="node-item cvt" draggable="true" data-node="convert/numAbsVal">数字绝对值 <span class="node-type-badge">转换</span></div>
                         </div>
                     </details>
 

@@ -7,7 +7,6 @@
 
 
 // 按关键词过滤左侧节点面板
-// 无输入时恢复默认展开状态
 function filterNodes(query) {
     const q = query.trim().toLowerCase();
     const detailsList = document.querySelectorAll('#node-panel details');

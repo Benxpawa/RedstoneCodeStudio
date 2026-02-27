@@ -17,10 +17,11 @@ document.addEventListener('DOMContentLoaded', function () {
         return e;
     }
 
-    editors.java = initEditor("editor-java", "java",  true);
-    editors.yml  = initEditor("editor-yml",  "yaml",  true);
-    editors.cfg  = initEditor("editor-cfg",  "yaml",  false);  // 配置文件允许手动编辑
-    editors.pom  = initEditor("editor-pom",  "xml",   true);
+    // 全部都允许编辑吧，现在可视化和代码的转换还不够完善，先让用户自己改吧╰(*°▽°*)╯
+    editors.java = initEditor("editor-java", "java",  false);
+    editors.yml  = initEditor("editor-yml",  "yaml",  false);
+    editors.cfg  = initEditor("editor-cfg",  "yaml",  false);
+    editors.pom  = initEditor("editor-pom",  "xml",   false);
 
     //  配置项默认值 
 
