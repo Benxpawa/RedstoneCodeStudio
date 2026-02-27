@@ -21,32 +21,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows
+          # Windows (amd64 only - cross-compiling ARM64 is difficult with webview)
           - os: windows
             arch: amd64
             runs-on: windows-latest
             output_name: rcstudio.exe
-          - os: windows
-            arch: arm64
-            runs-on: windows-latest
-            output_name: rcstudio-arm64.exe
-          # Linux
+          # Linux (amd64 only - cross-compiling ARM64 requires ARM64 runner)
           - os: linux
             arch: amd64
             runs-on: ubuntu-latest
             output_name: rcstudio
-          - os: linux
-            arch: arm64
-            runs-on: ubuntu-latest
-            output_name: rcstudio-arm64
-          # macOS
+          # macOS (both architectures available)
           - os: darwin
             arch: amd64
-            runs-on: macos-latest
+            runs-on: macos-13
             output_name: rcstudio-mac-amd64
           - os: darwin
             arch: arm64
-            runs-on: macos-latest
+            runs-on: macos-14
             output_name: rcstudio-mac-arm64
 
     steps:
