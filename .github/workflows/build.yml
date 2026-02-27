@@ -15,17 +15,8 @@ env:
 
 jobs:
   build:
-    name: Build for ${{ matrix.os }} (${{ matrix.arch }})
-    runs-on: ${{ matrix.runs-on }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Windows AMD64
-          - os: windows
-            arch: amd64
-            runs-on: windows-latest
-            output_name: rcstudio.exe
+    name: Build for Windows
+    runs-on: windows-latest
 
     steps:
       - name: Checkout code
@@ -51,41 +42,37 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Build for ${{ matrix.os }}/${{ matrix.arch }}
+      - name: Build
         env:
-          GOOS: ${{ matrix.os }}
-          GOARCH: ${{ matrix.arch }}
+          GOOS: windows
+          GOARCH: amd64
           # webview_go 需要 CGO，所以不设置 CGO_ENABLED
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
           if [ "$VERSION" = "$GITHUB_REF" ]; then
             VERSION="dev-${GITHUB_SHA::7}"
           fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Building version: $VERSION"
           LDFLAGS="-s -w -X main.Version=$VERSION -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          go build -ldflags "$LDFLAGS" -o ${{ matrix.output_name }} main.go
+          go build -ldflags "$LDFLAGS" -o rcstudio.exe main.go
         shell: bash
 
       - name: Prepare release assets
-        if: matrix.os != 'windows'
         run: |
-          chmod +x ${{ matrix.output_name }}
-          tar -czf rcstudio-${{ matrix.os }}-${{ matrix.arch }}.tar.gz ${{ matrix.output_name }} resources/
-        shell: bash
-
-      - name: Prepare release assets (Windows)
-        if: matrix.os == 'windows'
-        run: |
-          7z a -tzip rcstudio-${{ matrix.os }}-${{ matrix.arch }}.zip ${{ matrix.output_name }} resources\*
+          # 不带 Maven 的精简版
+          7z a -tzip RCStudio-${{ env.VERSION }}.zip rcstudio.exe resources\index.html resources\js
+          # 带 Maven 的完整版
+          7z a -tzip RCStudio-${{ env.VERSION }}-Full.zip rcstudio.exe resources
         shell: pwsh
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: rcstudio-${{ matrix.os }}-${{ matrix.arch }}
+          name: rcstudio-windows-amd64
           path: |
-            rcstudio-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
-            rcstudio-${{ matrix.os }}-${{ matrix.arch }}.zip
+            RCStudio-${{ env.VERSION }}.zip
+            RCStudio-${{ env.VERSION }}-Full.zip
           retention-days: 30
 
   release:
@@ -102,41 +89,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract changelog from CHANGELOG.md
+      - name: Extract version and changelog
         id: changelog
         run: |
           TAG="${GITHUB_REF_NAME#v}"
           echo "version=$TAG" >> $GITHUB_OUTPUT
 
-          # 读取 CHANGELOG.md 并提取当前版本内容
-          if [ -f CHANGELOG.md ]; then
-            # 使用 awk 提取版本内容
-            CONTENT=$(awk -v ver="$TAG" '
-              BEGIN { found=0; skip=0 }
-              /^\s*##\s*\[/ {
-                if (found) exit
-                if ($0 ~ "\\[" ver "\\]" || ($0 ~ "\\[" ver "\\.")) {
-                  found=1
-                  next
-                }
-              }
-              found && !skip { print }
-              /^\s*##\s*\[未发布\]/ { skip=1 }
-            ' CHANGELOG.md)
-
-            if [ -n "$CONTENT" ]; then
-              # 写入临时文件
-              echo "$CONTENT" > release_notes.txt
-            else
-              # 如果没找到，使用 git log
-              PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
-              git log "$PREV_TAG..$GITHUB_REF_NAME" --pretty=format:"- %s (%h)" --no-merges > release_notes.txt || echo "- 首次发布" > release_notes.txt
-            fi
-          else
-            # 没有 CHANGELOG.md，使用 git log
-            PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
-            git log "$PREV_TAG..$GITHUB_REF_NAME" --pretty=format:"- %s (%h)" --no-merges > release_notes.txt || echo "- 首次发布" > release_notes.txt
-          fi
+          # 使用 git log 生成变更日志
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          git log "$PREV_TAG..$GITHUB_REF_NAME" --pretty=format:"- %s (%h)" --no-merges > release_notes.txt || echo "- 首次发布" > release_notes.txt
 
       - name: Generate release notes
         id: release-notes
@@ -152,19 +113,13 @@ jobs:
           ## RedstoneCode Studio $VERSION
 
           ### 📦 下载说明
-          请根据你的操作系统下载对应的压缩包：
+          - **RCStudio-$VERSION.zip** - 精简版（不包含 Maven，需自行安装）
+          - **RCStudio-$VERSION-Full.zip** - 完整版（包含内置 Maven）
 
-          - **Windows**: 下载 `rcstudio-windows-amd64.zip` 或 `rcstudio-windows-arm64.zip`
-          - **Linux**: 下载 `rcstudio-linux-amd64.tar.gz` 或 `rcstudio-linux-arm64.tar.gz`
-          - **macOS**: 下载 `rcstudio-darwin-amd64.tar.gz` 或 `rcstudio-darwin-arm64.tar.gz`
-
-          解压后直接运行可执行文件即可。
+          解压后直接运行 `rcstudio.exe` 即可。
 
           ### 🔄 更新内容
           $CHANGELOG_CONTENT
-
-          ### 📝 完整更新日志
-          查看 [CHANGELOG.md](https://github.com/$REPO/blob/main/CHANGELOG.md) 获取更多详情。
 
           ---
 
@@ -194,7 +149,6 @@ jobs:
           draft: false
           prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
           files: |
-            artifacts/*/*.tar.gz
             artifacts/*/*.zip
           generate_release_notes: false
         env:
@@ -209,5 +163,5 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 Assets" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          ls -lh artifacts/*/*.tar.gz artifacts/*/*.zip 2>/dev/null || true >> $GITHUB_STEP_SUMMARY
+          ls -lh artifacts/*/*.zip 2>/dev/null || true >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
