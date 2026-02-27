@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RedstoneCode Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/litegraph.js@0.7.18/build/litegraph.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/litegraph.js@0.7.18/css/litegraph.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.4/ace.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f0f2f5;
+        }
+
+        .main-container {
+            height: calc(100vh - 56px);
+        }
+
+        .view-section {
+            display: none;
+            height: 100%;
+            width: 100%;
+        }
+
+        .view-section.active {
+            display: flex;
+        }
+
+        .tab-group {
+            display: flex;
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            gap: 0;
+            border-bottom: 1px solid #e2e6ed;
+        }
+
+        .tab-btn {
+            padding: 8px 18px;
+            border-radius: 0;
+            font-size: 12px;
+            font-weight: 600;
+            color: #7a8494;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all .15s;
+            white-space: nowrap;
+            margin-bottom: -1px;
+        }
+
+        .tab-btn.active {
+            background: transparent;
+            color: #1a2035;
+            border-bottom-color: #1a2035;
+            box-shadow: none;
+        }
+
+        .tab-btn:hover:not(.active) {
+            color: #1a2035;
+            background: rgba(0, 0, 0, .03);
+        }
+
+        #node-panel {
+            width: 220px;
+            min-width: 220px;
+            background: #1c1f2b;
+            border-right: 1px solid #2e3347;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #node-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #node-panel::-webkit-scrollbar-thumb {
+            background: #3a3f55;
+            border-radius: 4px;
+        }
+
+        summary {
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .panel-section-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #5a6282;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 10px 10px 10px 14px;
+            border-radius: 6px;
+            margin: 2px 6px 0;
+            transition: color .15s, background .15s;
+        }
+
+        .panel-section-title:hover {
+            color: #8892aa;
+            background: rgba(255, 255, 255, .04);
+        }
+
+        .panel-section-title .section-arrow {
+            display: inline-block;
+            transform-origin: center;
+            transition: transform 0.2s ease;
+            font-size: 8px;
+            color: #3a4060;
+            flex-shrink: 0;
+            margin-left: 4px;
+        }
+
+        details[open] .panel-section-title .section-arrow {
+            transform: rotate(90deg);
+            color: #5a6282;
+        }
+
+        .panel-section-body {
+            overflow: visible;
+            max-height: none;
+            padding: 4px 0;
+        }
+
+        .panel-section-body .node-item:last-child {
+            margin-bottom: 4px;
+        }
+
+        .node-item {
+            margin: 2px 8px;
+            padding: 8px 10px;
+            border-radius: 7px;
+            cursor: grab;
+            font-size: 12px;
+            font-weight: 500;
+            color: #c8cde0;
+            transition: background .15s;
+            user-select: none;
+            border-left: 3px solid transparent;
+        }
+
+        .node-item:hover {
+            background: #272b3d;
+        }
+
+        .node-item:active {
+            cursor: grabbing;
+        }
+
+        .node-item.ev {
+            border-color: #3b7bd4;
+        }
+
+        .node-item.act {
+            border-color: #9055d4;
+        }
+
+        .node-item.msg {
+            border-color: #d46b30;
+        }
+
+        .node-item.dat {
+            border-color: #3aad5e;
+        }
+
+        .node-item.cmd {
+            border-color: #d4c030;
+        }
+
+        .node-item.cfg {
+            border-color: #d43040;
+        }
+
+        .node-item.plr {
+            border-color: #30afd4;
+        }
+
+        .node-item.wld {
+            border-color: #0ad4c0;
+        }
+
+        .node-item.srv {
+            border-color: #d48030;
+        }
+
+        .node-item.lgc {
+            border-color: #a0c020;
+        }
+
+        .node-item.net {
+            border-color: #9040d4;
+        }
+
+        .node-item .node-type-badge {
+            float: right;
+            font-size: 9px;
+            padding: 1px 5px;
+            border-radius: 4px;
+            opacity: .7;
+            margin-top: 1px;
+        }
+
+        .node-item.ev .node-type-badge {
+            background: #1e3a6e;
+            color: #7eb3ff;
+        }
+
+        .node-item.act .node-type-badge {
+            background: #3a1a6e;
+            color: #c07eff;
+        }
+
+        .node-item.msg .node-type-badge {
+            background: #6e2e0a;
+            color: #ffaa7e;
+        }
+
+        .node-item.dat .node-type-badge {
+            background: #0a4a22;
+            color: #7effaa;
+        }
+
+        .node-item.cmd .node-type-badge {
+            background: #4a420a;
+            color: #ffee7e;
+        }
+
+        .node-item.cfg .node-type-badge {
+            background: #4a0a10;
+            color: #ff7e8a;
+        }
+
+        .node-item.plr .node-type-badge {
+            background: #0a3a4a;
+            color: #7ee8ff;
+        }
+
+        .node-item.wld .node-type-badge {
+            background: #0a3a38;
+            color: #7ef8f0;
+        }
+
+        .node-item.srv .node-type-badge {
+            background: #3a2000;
+            color: #ffcc7e;
+        }
+
+        .node-item.lgc .node-type-badge {
+            background: #303800;
+            color: #d8f060;
+        }
+
+        .node-item.net .node-type-badge {
+            background: #250a40;
+            color: #d07ef8;
+        }
+
+        #blocklyDiv {
+            flex: 1;
+            background: #181b27;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #blocklyDiv canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #source-tabs {
+            display: flex;
+            background: #1e2130;
+            border-bottom: 1px solid #2e3347;
+            padding: 0 12px;
+            gap: 2px;
+        }
+
+        .src-tab {
+            padding: 10px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #5a6282;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+
+        .src-tab.active {
+            color: #a8c0ff;
+            border-bottom-color: #4a80ff;
+        }
+
+        .src-tab:hover:not(.active) {
+            color: #8899bb;
+        }
+
+        #source-editors {
+            flex: 1;
+            position: relative;
+        }
+
+        .src-editor-pane {
+            position: absolute;
+            inset: 0;
+            display: none;
+        }
+
+        .src-editor-pane.active {
+            display: block;
+        }
+
+        #view-config {
+            overflow-y: auto;
+            flex-direction: column;
+        }
+
+        #view-config::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #view-config::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 6px;
+        }
+
+        .cfg-input {
+            width: 100%;
+            background: #f8fafd;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 9px 12px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+            color: #1a2035;
+        }
+
+        .cfg-input:focus {
+            border-color: #4a80ff;
+            box-shadow: 0 0 0 3px rgba(74, 128, 255, .1);
+        }
+
+        .cfg-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #8898aa;
+            margin-bottom: 6px;
+            display: block;
+            letter-spacing: .5px;
+        }
+
+        .cfg-card {
+            background: #fff;
+            border-radius: 16px;
+            border: 1.5px solid #e8edf5;
+            padding: 22px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .04);
+        }
+
+        .cfg-card-title {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #canvas-hint {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, .08);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, .12);
+            border-radius: 20px;
+            padding: 6px 16px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, .45);
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-content {
+            position: relative;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            width: 400px;
+            max-width: 90%;
+            padding: 0;
+            overflow: hidden;
+            animation: modalFadeIn 0.2s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            padding: 18px 20px;
+            background: #f9fafc;
+            border-bottom: 1px solid #eef2f6;
+        }
+
+        .modal-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            margin-right: 12px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .modal.success .modal-icon {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2310b981'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/%3E%3C/svg%3E");
+        }
+
+        .modal.error .modal-icon {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ef4444'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'/%3E%3C/svg%3E");
+        }
+
+        .modal-title {
+            flex: 1;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a2035;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            font-size: 28px;
+            line-height: 1;
+            color: #9aa3b2;
+            cursor: pointer;
+            padding: 0 8px;
+            transition: color 0.15s;
+        }
+
+        .modal-close:hover {
+            color: #4a5568;
+        }
+
+        .modal-body {
+            padding: 24px 20px;
+            font-size: 15px;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #eef2f6;
+            text-align: right;
+        }
+
+        .modal-btn {
+            background: #1a2035;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .modal-btn:hover {
+            background: #2d3748;
+        }
+
+        .litecontextmenu .litemenu-entry i {
+            display: inline-block;
+            width: 7px;
+            /* 固定图标区域宽度 */
+            text-align: center;
+            /* 图标在宽度内居中 */
+            margin-right: 8px;
+            /* 图标与文字的间距 */
+            vertical-align: middle;
+        }
+    </style>
+</head>
+
+<body class="overflow-hidden">
+
+
+    <header
+        class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-5 z-50 relative shadow-sm">
+        <div class="flex items-center gap-8">
+            <div class="flex items-center gap-2.5">
+
+                <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg"
+                    style="flex-shrink:0;">
+
+                    <rect width="30" height="30" rx="4" fill="#1a0a0a" />
+
+
+                    <rect x="13" y="7" width="4" height="4" fill="#cc1a1a" />
+                    <rect x="13" y="13" width="4" height="4" fill="#ff2222" opacity="0.95" />
+                    <rect x="7" y="13" width="4" height="4" fill="#cc1a1a" />
+                    <rect x="19" y="13" width="4" height="4" fill="#cc1a1a" />
+                    <rect x="13" y="19" width="4" height="4" fill="#cc1a1a" />
+
+                    <rect x="7" y="7" width="4" height="4" fill="#3d0000" />
+                    <rect x="19" y="7" width="4" height="4" fill="#3d0000" />
+                    <rect x="7" y="19" width="4" height="4" fill="#3d0000" />
+                    <rect x="19" y="19" width="4" height="4" fill="#3d0000" />
+
+                    <rect x="14" y="14" width="2" height="2" fill="#ff8888" />
+                </svg>
+                <span class="font-bold text-gray-900 text-base tracking-tight">RC Studio</span>
+                <span
+                    class="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Beta</span>
+            </div>
+            <nav class="tab-group">
+                <button onclick="switchTab('logic')" id="tab-logic" class="tab-btn active">逻辑设计</button>
+                <button onclick="switchTab('config')" id="tab-config" class="tab-btn">插件配置</button>
+                <button onclick="switchTab('source')" id="tab-source" class="tab-btn">源码预览</button>
+                <button onclick="switchTab('about')" id="tab-about" class="tab-btn">关于</button>
+            </nav>
+        </div>
+        <div class="flex items-center gap-3">
+            <span id="status" class="text-xs text-gray-500 hidden max-w-xs truncate"></span>
+
+
+            <div class="flex items-center gap-1.5 border border-gray-200 rounded-lg p-1 bg-gray-50">
+                <button onclick="exportBlueprint()" title="将当前项目（节点图+配置）导出为 .mcbp 文件分享给他人"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-all">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    导出项目
+                </button>
+                <div class="w-px h-4 bg-gray-200"></div>
+                <button onclick="document.getElementById('blueprintFileInput').click()" title="导入他人分享的 .mcbp 项目文件"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-all">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    导入项目
+                </button>
+            </div>
+            <input type="file" id="blueprintFileInput" accept=".mcbp,.json" style="display:none"
+                onchange="importBlueprint(this)">
+
+            <button id="compileBtn" onclick="compilePlugin()"
+                class="flex items-center gap-2 bg-gray-900 hover:bg-black text-white px-4 py-2 rounded-lg font-semibold text-sm border border-gray-700 active:scale-95 transition-all">
+                <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.5"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 3l14 9-14 9V3z" />
+                </svg>
+                导出 JAR
+            </button>
+        </div>
+    </header>
+
+    <div class="flex main-container">
+        <main class="flex-1 relative overflow-hidden" style="display:flex;flex-direction:column;">
+
+
+            <div id="view-logic" class="view-section active" style="flex:1;">
+
+                <div id="node-panel">
+
+                    <div
+                        style="padding:10px 10px 6px; position:sticky; top:0; background:#1c1f2b; z-index:5; border-bottom:1px solid #232737;">
+                        <input id="node-search" type="text" placeholder="搜索节点…" oninput="filterNodes(this.value)"
+                            style="width:100%; background:#13161f; border:1px solid #2e3347; border-radius:7px; padding:6px 10px; font-size:11px; color:#c8cde0; outline:none;">
+                    </div>
+
+
+                    <details open>
+                        <summary class="panel-section-title">
+                            <span>生命周期</span>
+                            <span class="section-arrow">▶</span>
+                        </summary>
+                        <div class="panel-section-body">
+                            <div class="node-item ev" draggable="true" data-node="events/onEnable">插件启用 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/onDisable">插件卸载 <span
+                                    class="node-type-badge">事件</span></div>
+                        </div>
+                    </details>
+
+
+                    <details>
+                        <summary class="panel-section-title">
+                            <span>玩家事件</span>
+                            <span class="section-arrow">▶</span>
+                        </summary>
+                        <div class="panel-section-body">
+                            <div class="node-item ev" draggable="true" data-node="events/playerJoin">玩家加入 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/playerQuit">玩家离开 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/playerDeath">玩家死亡 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/playerChat">玩家聊天 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/playerMove">玩家移动 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/playerRespawn">玩家复活 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/playerInteract">玩家交互 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/playerLogin">玩家登录预处理 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/blockBreak">破坏方块 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/blockPlace">放置方块 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/entityDamageByPlayer">攻击实体
+                                <span class="node-type-badge">事件</span>
+                            </div>
+                            <div class="node-item ev" draggable="true" data-node="events/playerDamaged">受到伤害 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/playerDropItem">丢弃物品 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/playerPickupItem">拾取物品 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/playerLevelUp">玩家升级 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/playerSneak">切换潜行 <span
+                                    class="node-type-badge">事件</span></div>
+                            <div class="node-item ev" draggable="true" data-node="events/playerSprint">切换疾跑 <span
+                                    class="node-type-badge">事件</span></div>
+                        </div>
+                    </details>
+
+
+                    <details>
+                        <summary class="panel-section-title">
+                            <span>指令</span>
+                            <span class="section-arrow">▶</span>
+                        </summary>
+                        <div class="panel-section-body">
+                            <div class="node-item cmd" draggable="true" data-node="command/onCommand">注册指令 <span
+                                    class="node-type-badge">指令</span></div>
+                            <div class="node-item cmd" draggable="true" data-node="command/sendUsage">发送用法提示 <span
+                                    class="node-type-badge">指令</span></div>
+                            <div class="node-item cmd" draggable="true" data-node="command/checkPermission">检查权限 <span
+                                    class="node-type-badge">指令</span></div>
+                        </div>
+                    </details>
+
+
+                    <details>
+                        <summary class="panel-section-title">
+                            <span>消息动作</span>
+                            <span class="section-arrow">▶</span>
+                        </summary>
+                        <div class="panel-section-body">
+                            <div class="node-item act" draggable="true" data-node="actions/consoleLog">后台打印 <span
+                                    class="node-type-badge">动作</span></div>
+                            <div class="node-item msg" draggable="true" data-node="actions/broadcast">全服广播 <span
+                                    class="node-type-badge">动作</span></div>
+                            <div class="node-item msg" draggable="true" data-node="actions/sendMessage">发送消息 <span
+                                    class="node-type-badge">动作</span></div>
+                            <div class="node-item msg" draggable="true" data-node="actions/sendTitle">发送标题 <span
+                                    class="node-type-badge">动作</span></div>
+                            <div class="node-item msg" draggable="true" data-node="actions/sendActionBar">发送动作栏 <span
+                                    class="node-type-badge">动作</span></div>
+                        </div>
+                    </details>
+
+
+                    <details>
+                        <summary class="panel-section-title">
+                            <span>玩家操控</span>
+                            <span class="section-arrow">▶</span>
+                        </summary>
+                        <div class="panel-section-body">
+                            <div class="node-item plr" draggable="true" data-node="player/kick">踢出玩家 <span
+                                    class="node-type-badge">玩家</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/giveExp">给予经验 <span
+                                    class="node-type-badge">玩家</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/giveItem">给予物品 <span
+                                    class="node-type-badge">玩家</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/removeItem">移除物品 <span
+                                    class="node-type-badge">玩家</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/clearInventory">清空背包 <span
+                                    class="node-type-badge">玩家</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/setHealth">设置血量 <span
+                                    class="node-type-badge">玩家</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/setMaxHealth">设置最大血量 <span
+                                    class="node-type-badge">玩家</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/setFoodLevel">设置饱食度 <span
+                                    class="node-type-badge">玩家</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/setLevel">设置等级 <span
+                                    class="node-type-badge">玩家</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/teleport">传送至玩家 <span
+                                    class="node-type-badge">玩家</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/teleportToCoords">传送到坐标 <span
+                                    class="node-type-badge">玩家</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/setGameMode">设置游戏模式 <span
+                                    class="node-type-badge">玩家</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/setFlying">设置飞行 <span
+                                    class="node-type-badge">玩家</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/playSound">播放音效 <span
+                                    class="node-type-badge">玩家</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/playParticle">播放粒子特效 <span
+                                    class="node-type-badge">玩家</span></div>
+                        </div>
+                    </details>
+
+
+                    <details>
+                        <summary class="panel-section-title">
+                            <span>玩家数据</span>
+                            <span class="section-arrow">▶</span>
+                        </summary>
+                        <div class="panel-section-body">
+                            <div class="node-item plr" draggable="true" data-node="player/getHealth">获取血量 <span
+                                    class="node-type-badge">数据</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/getMaxHealth">获取最大血量 <span
+                                    class="node-type-badge">数据</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/getLevel">获取等级 <span
+                                    class="node-type-badge">数据</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/getFoodLevel">获取饱食度 <span
+                                    class="node-type-badge">数据</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/getLocation">获取位置 <span
+                                    class="node-type-badge">数据</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/getItemInHand">获取手持物品 <span
+                                    class="node-type-badge">数据</span></div>
+                            <div class="node-item plr" draggable="true" data-node="player/isOnline">检查是否在线 <span
+                                    class="node-type-badge">数据</span></div>
+                        </div>
+                    </details>
+
+
+                    <details>
+                        <summary class="panel-section-title">
+                            <span>世界操作</span>
+                            <span class="section-arrow">▶</span>
+                        </summary>
+                        <div class="panel-section-body">
+                            <div class="node-item wld" draggable="true" data-node="world/setBlock">设置方块 <span
+                                    class="node-type-badge">世界</span></div>
+                            <div class="node-item wld" draggable="true" data-node="world/fillBlocks">填充区域方块 <span
+                                    class="node-type-badge">世界</span></div>
+                            <div class="node-item wld" draggable="true" data-node="world/spawnLightning">生成闪电 <span
+                                    class="node-type-badge">世界</span></div>
+                            <div class="node-item wld" draggable="true" data-node="world/createExplosion">创建爆炸 <span
+                                    class="node-type-badge">世界</span></div>
+                            <div class="node-item wld" draggable="true" data-node="world/spawnEntity">生成实体 <span
+                                    class="node-type-badge">世界</span></div>
+                            <div class="node-item wld" draggable="true" data-node="world/setTime">设置世界时间 <span
+                                    class="node-type-badge">世界</span></div>
+                            <div class="node-item wld" draggable="true" data-node="world/setWeather">设置天气 <span
+                                    class="node-type-badge">世界</span></div>
+                        </div>
+                    </details>
+
+
+                    <details>
+                        <summary class="panel-section-title">
+                            <span>服务器操作</span>
+                            <span class="section-arrow">▶</span>
+                        </summary>
+                        <div class="panel-section-body">
+                            <div class="node-item srv" draggable="true" data-node="server/dispatchCommand">执行控制台指令 <span
+                                    class="node-type-badge">服务器</span></div>
+                            <div class="node-item srv" draggable="true" data-node="server/runTaskLater">延迟执行 <span
+                                    class="node-type-badge">服务器</span></div>
+                            <div class="node-item srv" draggable="true" data-node="server/runTaskTimer">重复定时任务 <span
+                                    class="node-type-badge">服务器</span></div>
+                            <div class="node-item srv" draggable="true" data-node="server/forEachPlayer">遍历在线玩家 <span
+                                    class="node-type-badge">服务器</span></div>
+                            <div class="node-item srv" draggable="true" data-node="server/broadcastToOps">广播给管理员 <span
+                                    class="node-type-badge">服务器</span></div>
+                            <div class="node-item srv" draggable="true" data-node="server/getOnlineCount">获取在线人数 <span
+                                    class="node-type-badge">服务器</span></div>
+                            <div class="node-item srv" draggable="true" data-node="server/kickAll">踢出所有玩家 <span
+                                    class="node-type-badge">服务器</span></div>
+                            <div class="node-item srv" draggable="true" data-node="server/setMotd">设置MOTD <span
+                                    class="node-type-badge">服务器</span></div>
+                        </div>
+                    </details>
+
+
+                    <details>
+                        <summary class="panel-section-title">
+                            <span>逻辑控制</span>
+                            <span class="section-arrow">▶</span>
+                        </summary>
+                        <div class="panel-section-body">
+                            <div class="node-item lgc" draggable="true" data-node="logic/ifStringEqual">字符串相等判断 <span
+                                    class="node-type-badge">逻辑</span></div>
+                            <div class="node-item lgc" draggable="true" data-node="logic/ifContains">字符串包含判断 <span
+                                    class="node-type-badge">逻辑</span></div>
+                            <div class="node-item lgc" draggable="true" data-node="logic/ifNumberCompare">数值比较判断 <span
+                                    class="node-type-badge">逻辑</span></div>
+                            <div class="node-item lgc" draggable="true" data-node="logic/ifPlayerHasPerm">判断玩家权限 <span
+                                    class="node-type-badge">逻辑</span></div>
+                            <div class="node-item lgc" draggable="true" data-node="logic/ifPlayerIsOp">判断是否为OP <span
+                                    class="node-type-badge">逻辑</span></div>
+                            <div class="node-item lgc" draggable="true" data-node="logic/ifHealthBelow">判断血量低于 <span
+                                    class="node-type-badge">逻辑</span></div>
+                            <div class="node-item lgc" draggable="true" data-node="logic/ifItemInHand">判断手持物品 <span
+                                    class="node-type-badge">逻辑</span></div>
+                            <div class="node-item lgc" draggable="true" data-node="logic/cancelEvent">取消事件 <span
+                                    class="node-type-badge">逻辑</span></div>
+                            <div class="node-item lgc" draggable="true" data-node="logic/mathOp">数学运算 <span
+                                    class="node-type-badge">逻辑</span></div>
+                            <div class="node-item lgc" draggable="true" data-node="logic/strConcat">字符串拼接 <span
+                                    class="node-type-badge">逻辑</span></div>
+                        </div>
+                    </details>
+
+
+                    <details>
+                        <summary class="panel-section-title">
+                            <span>网络请求</span>
+                            <span class="section-arrow">▶</span>
+                        </summary>
+                        <div class="panel-section-body">
+                            <div class="node-item net" draggable="true" data-node="network/httpGet">异步HTTP GET <span
+                                    class="node-type-badge">网络</span></div>
+                            <div class="node-item net" draggable="true" data-node="network/httpPost">异步HTTP POST <span
+                                    class="node-type-badge">网络</span></div>
+                            <div class="node-item net" draggable="true" data-node="network/parseJsonField">解析JSON字段
+                                <span class="node-type-badge">网络</span>
+                            </div>
+                            <div class="node-item net" draggable="true" data-node="network/buildJsonObject">构建JSON对象
+                                <span class="node-type-badge">网络</span>
+                            </div>
+                        </div>
+                    </details>
+
+
+                    <details>
+                        <summary class="panel-section-title">
+                            <span>配置文件</span>
+                            <span class="section-arrow">▶</span>
+                        </summary>
+                        <div class="panel-section-body">
+                            <div class="node-item cfg" draggable="true" data-node="config/saveDefaultConfig">保存默认配置
+                                <span class="node-type-badge">配置</span>
+                            </div>
+                            <div class="node-item cfg" draggable="true" data-node="config/reloadConfig">重载配置 <span
+                                    class="node-type-badge">配置</span></div>
+                            <div class="node-item cfg" draggable="true" data-node="config/getString">读取字符串 <span
+                                    class="node-type-badge">配置</span></div>
+                            <div class="node-item cfg" draggable="true" data-node="config/getInt">读取整数 <span
+                                    class="node-type-badge">配置</span></div>
+                            <div class="node-item cfg" draggable="true" data-node="config/setAndSave">写入并保存 <span
+                                    class="node-type-badge">配置</span></div>
+                        </div>
+                    </details>
+
+
+                    <details>
+                        <summary class="panel-section-title">
+                            <span>数据节点</span>
+                            <span class="section-arrow">▶</span>
+                        </summary>
+                        <div class="panel-section-body" style="padding-bottom:10px;">
+                            <div class="node-item dat" draggable="true" data-node="values/text">文本 <span
+                                    class="node-type-badge">数据</span></div>
+                            <div class="node-item dat" draggable="true" data-node="values/number">数字 <span
+                                    class="node-type-badge">数据</span></div>
+                            <div class="node-item dat" draggable="true" data-node="values/formatText">格式化文本 <span
+                                    class="node-type-badge">数据</span></div>
+                            <div class="node-item plr" draggable="true" data-node="values/playerName">玩家名字 <span
+                                    class="node-type-badge">数据</span></div>
+                            <div class="node-item dat" draggable="true" data-node="values/colorText">颜色文本 <span
+                                    class="node-type-badge">数据</span></div>
+                        </div>
+                    </details>
+
+                </div>
+
+
+                <div id="blocklyDiv">
+                    <div id="canvas-hint">右键画布添加节点 · 从左侧面板拖入节点 · 拖拽连线构建逻辑</div>
+                </div>
+            </div>
+
+
+            <div id="view-config" class="view-section">
+                <div class="max-w-5xl mx-auto p-8 w-full">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+
+                        <div class="cfg-card">
+                            <div class="cfg-card-title text-blue-600">核心元数据</div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="cfg-label">插件名称
+                                        <span id="pluginName-hint"
+                                            class="ml-2 text-red-500 font-normal normal-case hidden"
+                                            style="font-size:10px;"></span>
+                                    </label>
+                                    <input type="text" id="pluginName" oninput="onPluginNameInput()" class="cfg-input"
+                                        placeholder="MagicPlugin">
+                                    <p class="text-gray-400 mt-1" style="font-size:10px;">只能包含字母、数字和连字符，不能以数字开头</p>
+                                </div>
+                                <div>
+                                    <label class="cfg-label">版本号</label>
+                                    <input type="text" id="pluginVersion" oninput="syncAllFiles()" value="1.0.0"
+                                        class="cfg-input">
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="cfg-label">主类路径
+                                        <span id="mainClass-hint"
+                                            class="ml-2 text-red-500 font-normal normal-case hidden"
+                                            style="font-size:10px;"></span>
+                                    </label>
+                                    <input type="text" id="mainClass" oninput="onMainClassInput()" class="cfg-input"
+                                        placeholder="me.yourname.myplugin.Main" style="transition:border-color .15s;">
+                                    <p class="text-gray-400 mt-1" style="font-size:10px;">格式：小写包名.小写包名.大写类名，例如
+                                        <code>me.steve.myplugin.Main</code>
+                                    </p>
+                                </div>
+                                <div>
+                                    <label class="cfg-label">Bukkit API 版本</label>
+                                    <select id="apiVersion" onchange="syncAllFiles()" class="cfg-input">
+                                        <option value="1.20">1.20（推荐）</option>
+                                        <option value="1.19">1.19</option>
+                                        <option value="1.16">1.16</option>
+                                        <option value="1.13">1.13</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="cfg-label">加载时机</label>
+                                    <select id="loadTime" onchange="syncAllFiles()" class="cfg-input">
+                                        <option value="POSTWORLD">POSTWORLD（默认）</option>
+                                        <option value="STARTUP">STARTUP（极早）</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="cfg-card">
+                            <div class="cfg-card-title text-indigo-600">开发者信息</div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="cfg-label">作者</label>
+                                    <input type="text" id="author" oninput="syncAllFiles()" placeholder="YourName"
+                                        class="cfg-input">
+                                </div>
+                                <div>
+                                    <label class="cfg-label">网站</label>
+                                    <input type="text" id="website" oninput="syncAllFiles()" placeholder="https://..."
+                                        class="cfg-input">
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="cfg-label">插件简介</label>
+                                    <textarea id="description" oninput="syncAllFiles()" rows="3"
+                                        class="cfg-input resize-none"></textarea>
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="cfg-label">软依赖（逗号分隔）</label>
+                                    <input type="text" id="softDepend" oninput="syncAllFiles()"
+                                        placeholder="Vault, PlaceholderAPI" class="cfg-input">
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="cfg-card">
+                            <div class="cfg-card-title text-amber-600">Maven / 构建配置</div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="cfg-label">Group ID</label>
+                                    <input type="text" id="groupId" oninput="syncAllFiles()" placeholder="me.yourname"
+                                        class="cfg-input">
+                                </div>
+                                <div>
+                                    <label class="cfg-label">Artifact ID</label>
+                                    <input type="text" id="artifactId" oninput="syncAllFiles()" placeholder="myplugin"
+                                        class="cfg-input">
+                                </div>
+                                <div>
+                                    <label class="cfg-label">Java 版本</label>
+                                    <select id="javaVersion" onchange="syncAllFiles()" class="cfg-input">
+                                        <option value="17">Java 17（推荐）</option>
+                                        <option value="11">Java 11</option>
+                                        <option value="8">Java 8</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="cfg-label">Spigot 依赖版本</label>
+                                    <select id="spigotVersion" onchange="syncAllFiles()" class="cfg-input">
+                                        <option value="1.20.4-R0.1-SNAPSHOT">1.20.4</option>
+                                        <option value="1.19.4-R0.1-SNAPSHOT">1.19.4</option>
+                                        <option value="1.16.5-R0.1-SNAPSHOT">1.16.5</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="cfg-card">
+                            <div class="cfg-card-title text-rose-600">config.yml 默认值</div>
+                            <div class="space-y-3">
+                                <div id="config-entries" class="space-y-2"></div>
+                                <button onclick="addConfigEntry()"
+                                    class="text-xs text-blue-500 hover:text-blue-700 font-semibold py-1">+
+                                    添加配置项</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="view-source" class="view-section" style="flex-direction:column;">
+                <div id="source-tabs">
+                    <div class="src-tab active" onclick="switchSrcTab('java')" id="srctab-java">Main.java</div>
+                    <div class="src-tab" onclick="switchSrcTab('yml')" id="srctab-yml">plugin.yml</div>
+                    <div class="src-tab" onclick="switchSrcTab('cfg')" id="srctab-cfg">config.yml</div>
+                    <div class="src-tab" onclick="switchSrcTab('pom')" id="srctab-pom">pom.xml</div>
+                </div>
+                <div id="source-editors" style="flex:1;position:relative;">
+                    <div class="src-editor-pane active" id="pane-java">
+                        <div id="editor-java" style="width:100%;height:100%;"></div>
+                    </div>
+                    <div class="src-editor-pane" id="pane-yml">
+                        <div id="editor-yml" style="width:100%;height:100%;"></div>
+                    </div>
+                    <div class="src-editor-pane" id="pane-cfg">
+                        <div id="editor-cfg" style="width:100%;height:100%;"></div>
+                    </div>
+                    <div class="src-editor-pane" id="pane-pom">
+                        <div id="editor-pom" style="width:100%;height:100%;"></div>
+                    </div>
+                </div>
+            </div>
+
+    </div>
+
+
+    <div id="view-about" class="view-section"
+        style="flex-direction:column; overflow-y:auto; background:#f0f2f5; position:absolute; inset:0; z-index:10;">
+        <div style="max-width:680px; margin:88px auto 80px; padding:0 24px; width:100%;">
+
+
+            <div style="display:flex; align-items:center; gap:16px; margin-bottom:36px;">
+                <svg width="44" height="44" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg"
+                    style="flex-shrink:0;">
+                    <rect width="30" height="30" rx="4" fill="#1a0a0a" />
+                    <rect x="13" y="7" width="4" height="4" fill="#cc1a1a" />
+                    <rect x="13" y="13" width="4" height="4" fill="#ff2222" opacity="0.95" />
+                    <rect x="7" y="13" width="4" height="4" fill="#cc1a1a" />
+                    <rect x="19" y="13" width="4" height="4" fill="#cc1a1a" />
+                    <rect x="13" y="19" width="4" height="4" fill="#cc1a1a" />
+                    <rect x="7" y="7" width="4" height="4" fill="#3d0000" />
+                    <rect x="19" y="7" width="4" height="4" fill="#3d0000" />
+                    <rect x="7" y="19" width="4" height="4" fill="#3d0000" />
+                    <rect x="19" y="19" width="4" height="4" fill="#3d0000" />
+                    <rect x="14" y="14" width="2" height="2" fill="#ff8888" />
+                </svg>
+                <div>
+                    <div style="font-size:20px; font-weight:700; color:#1a2035; letter-spacing:-.3px;">RedstoneCode
+                        Studio</div>
+                    <div
+                        style="font-size:11px; color:#9aa3b2; margin-top:4px; font-family:monospace; display:flex; gap:10px; align-items:center;">
+                        <span>Beta</span>
+                        <span
+                            style="width:3px;height:3px;border-radius:50%;background:#d0d5e0;display:inline-block;"></span>
+                        <span>RC Studio</span>
+                        <span
+                            style="width:3px;height:3px;border-radius:50%;background:#d0d5e0;display:inline-block;"></span>
+                        <span
+                            style="background:#fff0f0; color:#cc2222; border:1px solid #ffd0d0; border-radius:4px; padding:1px 7px; font-size:10px;">GPL
+                            v3</span>
+                    </div>
+                </div>
+            </div>
+
+
+            <div
+                style="background:#fff; border-radius:14px; border:1.5px solid #e8edf5; padding:20px 22px; box-shadow:0 2px 8px rgba(0,0,0,.04); margin-bottom:12px;">
+                <div
+                    style="font-size:10px; font-weight:700; color:#b0b8c8; letter-spacing:1.2px; text-transform:uppercase; margin-bottom:10px;">
+                    关于本项目</div>
+                <p style="font-size:13px; color:#3a4560; line-height:1.8; margin:0;">
+                    RedstoneCode Studio（RC Studio） 是一个可视化 Minecraft 插件开发工具。通过节点图拖拽构建插件逻辑，自动生成完整的 Java 源码、<code
+                        style="font-size:12px;background:#f4f6fb;padding:1px 5px;border-radius:4px;">plugin.yml</code>、<code
+                        style="font-size:12px;background:#f4f6fb;padding:1px 5px;border-radius:4px;">config.yml</code> 及
+                    Maven <code
+                        style="font-size:12px;background:#f4f6fb;padding:1px 5px;border-radius:4px;">pom.xml</code>，无需手写样板代码，即可快速上手开发
+                    Bukkit / Spigot 插件。
+                </p>
+            </div>
+
+
+            <div
+                style="background:#fff; border-radius:14px; border:1.5px solid #e8edf5; padding:20px 22px; box-shadow:0 2px 8px rgba(0,0,0,.04); margin-bottom:12px;">
+                <div
+                    style="font-size:10px; font-weight:700; color:#b0b8c8; letter-spacing:1.2px; text-transform:uppercase; margin-bottom:14px;">
+                    开源组件 &amp; 致谢</div>
+
+
+                <div style="display:grid; grid-template-columns:1fr auto; gap:0;">
+
+
+                    <div
+                        style="padding:10px 0; border-bottom:1px solid #f0f3f8; display:flex; flex-direction:column; gap:3px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span
+                                style="font-size:13px; font-weight:600; color:#1a2035; font-family:monospace;">LiteGraph.js</span>
+                            <span style="font-size:10px; color:#9aa3b2; font-family:monospace;">0.7.18</span>
+                            <span
+                                style="font-size:10px; background:#f0f7ff; color:#3a7bd4; border:1px solid #d0e4ff; border-radius:4px; padding:1px 6px;">MIT</span>
+                        </div>
+                        <div style="font-size:12px; color:#6b7890;">节点图画布引擎，提供可视化逻辑编辑能力</div>
+                    </div>
+                    <div
+                        style="padding:10px 0; border-bottom:1px solid #f0f3f8; display:flex; align-items:center; padding-left:16px;">
+                        <a href="https://github.com/jagenjo/litegraph.js" target="_blank"
+                            style="font-size:11px; color:#9aa3b2; text-decoration:none;"
+                            onmouseover="this.style.color='#4a6fa5'" onmouseout="this.style.color='#9aa3b2'">GitHub
+                            ↗</a>
+                    </div>
+
+
+                    <div
+                        style="padding:10px 0; border-bottom:1px solid #f0f3f8; display:flex; flex-direction:column; gap:3px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:13px; font-weight:600; color:#1a2035; font-family:monospace;">Ace
+                                Editor</span>
+                            <span style="font-size:10px; color:#9aa3b2; font-family:monospace;">1.23.4</span>
+                            <span
+                                style="font-size:10px; background:#f0f7ff; color:#3a7bd4; border:1px solid #d0e4ff; border-radius:4px; padding:1px 6px;">BSD</span>
+                        </div>
+                        <div style="font-size:12px; color:#6b7890;">源码编辑器，支持 Java / YAML / XML 语法高亮</div>
+                    </div>
+                    <div
+                        style="padding:10px 0; border-bottom:1px solid #f0f3f8; display:flex; align-items:center; padding-left:16px;">
+                        <a href="https://github.com/ajaxorg/ace" target="_blank"
+                            style="font-size:11px; color:#9aa3b2; text-decoration:none;"
+                            onmouseover="this.style.color='#4a6fa5'" onmouseout="this.style.color='#9aa3b2'">GitHub
+                            ↗</a>
+                    </div>
+
+
+                    <div
+                        style="padding:10px 0; border-bottom:1px solid #f0f3f8; display:flex; flex-direction:column; gap:3px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span
+                                style="font-size:13px; font-weight:600; color:#1a2035; font-family:monospace;">Tailwind
+                                CSS</span>
+                            <span style="font-size:10px; color:#9aa3b2; font-family:monospace;">CDN</span>
+                            <span
+                                style="font-size:10px; background:#f0f7ff; color:#3a7bd4; border:1px solid #d0e4ff; border-radius:4px; padding:1px 6px;">MIT</span>
+                        </div>
+                        <div style="font-size:12px; color:#6b7890;">实用优先的 CSS 框架，用于界面布局与样式</div>
+                    </div>
+                    <div
+                        style="padding:10px 0; border-bottom:1px solid #f0f3f8; display:flex; align-items:center; padding-left:16px;">
+                        <a href="https://github.com/tailwindlabs/tailwindcss" target="_blank"
+                            style="font-size:11px; color:#9aa3b2; text-decoration:none;"
+                            onmouseover="this.style.color='#4a6fa5'" onmouseout="this.style.color='#9aa3b2'">GitHub
+                            ↗</a>
+                    </div>
+
+
+                    <div
+                        style="padding:10px 0; border-bottom:1px solid #f0f3f8; display:flex; flex-direction:column; gap:3px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:13px; font-weight:600; color:#1a2035; font-family:monospace;">Spigot
+                                / Bukkit API</span>
+                            <span style="font-size:10px; color:#9aa3b2; font-family:monospace;">1.20.x</span>
+                            <span
+                                style="font-size:10px; background:#f5fff5; color:#2a8a3a; border:1px solid #c0e8c0; border-radius:4px; padding:1px 6px;">LGPL</span>
+                        </div>
+                        <div style="font-size:12px; color:#6b7890;">生成的插件代码所依赖的 Minecraft 服务端 API</div>
+                    </div>
+                    <div
+                        style="padding:10px 0; border-bottom:1px solid #f0f3f8; display:flex; align-items:center; padding-left:16px;">
+                        <a href="https://hub.spigotmc.org/stash/projects/SPIGOT" target="_blank"
+                            style="font-size:11px; color:#9aa3b2; text-decoration:none;"
+                            onmouseover="this.style.color='#4a6fa5'" onmouseout="this.style.color='#9aa3b2'">官网 ↗</a>
+                    </div>
+
+
+                    <div style="padding:10px 0; display:flex; flex-direction:column; gap:3px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:13px; font-weight:600; color:#1a2035; font-family:monospace;">Apache
+                                Maven</span>
+                            <span style="font-size:10px; color:#9aa3b2; font-family:monospace;">3.x</span>
+                            <span
+                                style="font-size:10px; background:#fffaf0; color:#c07020; border:1px solid #ffe4b0; border-radius:4px; padding:1px 6px;">Apache-2.0</span>
+                        </div>
+                        <div style="font-size:12px; color:#6b7890;">生成 pom.xml 构建描述文件，用于项目编译打包</div>
+                    </div>
+                    <div style="padding:10px 0; display:flex; align-items:center; padding-left:16px;">
+                        <a href="https://maven.apache.org" target="_blank"
+                            style="font-size:11px; color:#9aa3b2; text-decoration:none;"
+                            onmouseover="this.style.color='#4a6fa5'" onmouseout="this.style.color='#9aa3b2'">官网 ↗</a>
+                    </div>
+
+                </div>
+            </div>
+
+
+            <div
+                style="background:#fff; border-radius:14px; border:1.5px solid #e8edf5; padding:20px 22px; box-shadow:0 2px 8px rgba(0,0,0,.04); margin-bottom:12px;">
+                <div
+                    style="font-size:10px; font-weight:700; color:#b0b8c8; letter-spacing:1.2px; text-transform:uppercase; margin-bottom:14px;">
+                    法律声明</div>
+
+
+                <div style="margin-bottom:16px;">
+                    <div style="font-size:12px; font-weight:600; color:#4a5568; margin-bottom:6px;">本项目采用 GNU General
+                        Public License v3.0 协议开源。<br>
+                        使用本工具生成的源代码、配置文件及其编译产物，其所有权归使用者所有，RC Studio 不对生成代码的版权主张任何权利。<br>
+                        本工具为纯客户端处理，所有逻辑设计与配置文件均在用户本地生成，RC Studio 不会收集、存储或上传用户的任何代码逻辑或服务器配置数据。
+                    </div>
+                </div>
+
+
+                <div style="background:#fffbf0; border:1px solid #fdedc0; border-radius:8px; padding:12px 14px;">
+                    <div style="font-size:11px; font-weight:700; color:#a07020; margin-bottom:6px;">⚠ 免责声明</div>
+                    <p style="font-size:12px; color:#7a6030; line-height:1.7; margin:0;">
+                        本工具自动生成的代码仅供参考，不保证在所有 Minecraft 服务端版本上完全兼容。<br><b>用户在使用“网络请求”或“执行控制台指令”等节点时需自行承担风险。RC Studio
+                            不对因用户逻辑设计不当导致的服务器被攻击、数据泄露或恶意指令执行承担责任。</b><br>RedstoneCode Studio 与 Mojang Studios、Microsoft
+                        及
+                        SpigotMC 团队无任何从属或合作关系。"Minecraft" 为 Mojang AB 的注册商标，本项目不以任何方式主张对该商标的所有权。
+                    </p>
+                </div>
+            </div>
+
+
+            <div
+                style="background:#fff; border-radius:14px; border:1.5px solid #e8edf5; padding:20px 22px; box-shadow:0 2px 8px rgba(0,0,0,.04); margin-bottom:12px;">
+                <div
+                    style="font-size:10px; font-weight:700; color:#b0b8c8; letter-spacing:1.2px; text-transform:uppercase; margin-bottom:14px;">
+                    版本历史</div>
+                <div style="position:relative; padding-left:20px;">
+
+                    <div style="position:absolute; left:5px; top:8px; bottom:8px; width:1px; background:#e8edf5;"></div>
+
+                    <div style="margin-bottom:16px; position:relative;">
+                        <div
+                            style="position:absolute; left:-15px; top:4px; width:7px; height:7px; border-radius:50%; background:#cc2222; border:2px solid #fff; box-shadow:0 0 0 1px #cc2222;">
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:3px;">
+                            <span
+                                style="font-size:12px; font-weight:700; color:#1a2035; font-family:monospace;">v0.1.0</span>
+                            <span
+                                style="font-size:10px; background:#fff0f0; color:#cc2222; border:1px solid #ffd0d0; border-radius:4px; padding:1px 6px;">最新</span>
+                            <span style="font-size:11px; color:#b0b8c8;">Ciallo～ (∠・ω< )⌒★</span>
+                        </div>
+                        <div style="font-size:12px; color:#6b7890; line-height:1.6;">重构节点图引擎；修复已知问题</div>
+                    </div>
+
+                    <div style="margin-bottom:16px; position:relative;">
+                        <div
+                            style="position:absolute; left:-15px; top:4px; width:7px; height:7px; border-radius:50%; background:#d0d5e0; border:2px solid #fff; box-shadow:0 0 0 1px #d0d5e0;">
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:3px;">
+                            <span
+                                style="font-size:12px; font-weight:700; color:#4a5568; font-family:monospace;">v0.x</span>
+                            <span style="font-size:11px; color:#b0b8c8;">Develop</span>
+                        </div>
+                        <div style="font-size:12px; color:#6b7890; line-height:1.6;">最基础的版本，只支持很少的操作</div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div style="text-align:center; padding-top:20px;">
+                <p style="font-size:11px; color:#c0c8d8; margin:0; line-height:2;">
+                    © 2026 Benxp. &nbsp;·&nbsp; Licensed under the GNU GPL v3.<br>
+                    <span style="font-size:10px;">Not affiliated with Mojang Studios or Microsoft.</span>
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+    </main>
+    </div>
+
+
+    <div id="customModal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-icon"></span>
+                <h3 class="modal-title">提示</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="modalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="closeModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 按依赖顺序加载各模块 -->
+    <script src="js/constants.js"></script>
+    <script src="js/node-defs.js"></script>
+    <script src="js/codegen.js"></script>
+    <script src="js/form.js"></script>
+    <script src="js/config-ui.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/blueprint.js"></script>
+    <script src="js/compile.js"></script>
+    <script src="js/graph.js"></script>
+    <script src="js/main.js"></script>
+
+</body>
+
+</html>
