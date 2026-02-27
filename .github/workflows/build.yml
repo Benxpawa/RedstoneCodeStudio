@@ -77,7 +77,7 @@ jobs:
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
-          CGO_ENABLED: 0
+          # webview_go 需要 CGO，所以不设置 CGO_ENABLED
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
           if [ "$VERSION" = "$GITHUB_REF" ]; then
