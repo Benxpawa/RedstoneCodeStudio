@@ -18,7 +18,7 @@ builds/
 *.out
 go.work
 
-# Go 模块缓存（可选，根据需要决定是否排除）
+# Go 模块缓存
 # vendor/
 
 # IDE 配置
@@ -39,7 +39,6 @@ Thumbs.db
 
 # 日志文件
 *.log
-RELEASE_DRAFT.md
 
 # 临时文件
 tmp/
