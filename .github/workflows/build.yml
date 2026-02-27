@@ -124,79 +124,79 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Generate changelog
+      - name: Extract changelog from CHANGELOG.md
         id: changelog
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const tag = '${{ github.ref_name }}';
-            const version = tag.replace(/^v/, '');
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          echo "version=$TAG" >> $GITHUB_OUTPUT
 
-            // 读取 CHANGELOG.md
-            let changelogContent = '';
-            try {
-              changelogContent = fs.readFileSync('CHANGELOG.md', 'utf8');
-            } catch (e) {
-              console.log('CHANGELOG.md not found, using git log');
-            }
-
-            // 提取当前版本的更新日志
-            let releaseContent = '';
-            if (changelogContent) {
-              // 匹配版本号（格式：## [x.x.x] 或 ## [未发布]）
-              const versionRegex = new RegExp(`##\\s*\\[?${version === 'unreleased' ? '未发布' : version}\\]?[^\\n]*\\n([\\s\\S]*?)(?=##\\s*\\[|$)`, 'i');
-              const match = changelogContent.match(versionRegex);
-              
-              if (match && match[1]) {
-                releaseContent = match[1].trim();
-              } else {
-                // 如果没找到匹配的版本，尝试从 git log 生成
-                const { execSync } = require('child_process');
-                let previousTag;
-                try {
-                  previousTag = execSync('git describe --tags --abbrev=0 HEAD^').toString().trim();
-                } catch (e) {
-                  previousTag = execSync('git rev-list --max-parents=0 HEAD').toString().trim();
+          # 读取 CHANGELOG.md 并提取当前版本内容
+          if [ -f CHANGELOG.md ]; then
+            # 使用 awk 提取版本内容
+            CONTENT=$(awk -v ver="$TAG" '
+              BEGIN { found=0; skip=0 }
+              /^\s*##\s*\[/ {
+                if (found) exit
+                if ($0 ~ "\\[" ver "\\]" || ($0 ~ "\\[" ver "\\.")) {
+                  found=1
+                  next
                 }
-                releaseContent = execSync(`git log ${previousTag}..${tag} --pretty=format:"- %s (%h)" --no-merges`).toString() || '- 首次发布';
               }
-            } else {
-              // 如果没有 CHANGELOG.md，从 git log 生成
-              const { execSync } = require('child_process');
-              let previousTag;
-              try {
-                previousTag = execSync('git describe --tags --abbrev=0 HEAD^').toString().trim();
-              } catch (e) {
-                previousTag = execSync('git rev-list --max-parents=0 HEAD').toString().trim();
-              }
-              releaseContent = execSync(`git log ${previousTag}..${tag} --pretty=format:"- %s (%h)" --no-merges`).toString() || '- 首次发布';
-            }
+              found && !skip { print }
+              /^\s*##\s*\[未发布\]/ { skip=1 }
+            ' CHANGELOG.md)
 
-            // 生成 release 说明
-            const releaseNotes = `## RedstoneCode Studio ${version}
+            if [ -n "$CONTENT" ]; then
+              # 写入临时文件
+              echo "$CONTENT" > release_notes.txt
+            else
+              # 如果没找到，使用 git log
+              PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
+              git log "$PREV_TAG..$GITHUB_REF_NAME" --pretty=format:"- %s (%h)" --no-merges > release_notes.txt || echo "- 首次发布" > release_notes.txt
+            fi
+          else
+            # 没有 CHANGELOG.md，使用 git log
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
+            git log "$PREV_TAG..$GITHUB_REF_NAME" --pretty=format:"- %s (%h)" --no-merges > release_notes.txt || echo "- 首次发布" > release_notes.txt
+          fi
 
-### 📦 下载说明
-请根据你的操作系统下载对应的压缩包：
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          VERSION="${{ steps.changelog.outputs.version }}"
+          REPO="${{ github.repository }}"
 
-- **Windows**: 下载 \\`rcstudio-windows-amd64.zip\\` 或 \\`rcstudio-windows-arm64.zip\\`
-- **Linux**: 下载 \\`rcstudio-linux-amd64.tar.gz\\` 或 \\`rcstudio-linux-arm64.tar.gz\\`
-- **macOS**: 下载 \\`rcstudio-darwin-amd64.tar.gz\\` 或 \\`rcstudio-darwin-arm64.tar.gz\\`
+          # 读取 changelog 内容
+          CHANGELOG_CONTENT=$(cat release_notes.txt)
 
-解压后直接运行可执行文件即可。
+          # 生成完整的 release notes
+          cat > final_release_notes.txt << 'EOF'
+          ## RedstoneCode Studio $VERSION
 
-### 🔄 更新内容
-${releaseContent}
+          ### 📦 下载说明
+          请根据你的操作系统下载对应的压缩包：
 
-### 📝 完整更新日志
-查看 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) 获取更多详情。
+          - **Windows**: 下载 `rcstudio-windows-amd64.zip` 或 `rcstudio-windows-arm64.zip`
+          - **Linux**: 下载 `rcstudio-linux-amd64.tar.gz` 或 `rcstudio-linux-arm64.tar.gz`
+          - **macOS**: 下载 `rcstudio-darwin-amd64.tar.gz` 或 `rcstudio-darwin-arm64.tar.gz`
 
----
+          解压后直接运行可执行文件即可。
 
-**提示**: 如果遇到问题，请提交 [Issue](https://github.com/${{ github.repository }}/issues)`;
-            
-            core.setOutput('notes', releaseNotes);
-            core.setOutput('version', version);
+          ### 🔄 更新内容
+          $CHANGELOG_CONTENT
+
+          ### 📝 完整更新日志
+          查看 [CHANGELOG.md](https://github.com/$REPO/blob/main/CHANGELOG.md) 获取更多详情。
+
+          ---
+
+          **提示**: 如果遇到问题，请提交 [Issue](https://github.com/$REPO/issues)
+          EOF
+
+          # 替换变量
+          sed -i "s/\$VERSION/$VERSION/g" final_release_notes.txt
+          sed -i "s/\$REPO/$REPO/g" final_release_notes.txt
+          sed -i "s/\$CHANGELOG_CONTENT/$CHANGELOG_CONTENT/g" final_release_notes.txt
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -212,7 +212,7 @@ ${releaseContent}
         with:
           tag_name: ${{ github.ref_name }}
           name: RedstoneCode Studio ${{ steps.changelog.outputs.version }}
-          body: ${{ steps.changelog.outputs.notes }}
+          body_path: final_release_notes.txt
           draft: false
           prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
           files: |
