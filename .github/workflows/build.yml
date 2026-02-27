@@ -21,25 +21,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows (amd64 only - cross-compiling ARM64 is difficult with webview)
+          # Windows AMD64
           - os: windows
             arch: amd64
             runs-on: windows-latest
             output_name: rcstudio.exe
-          # Linux (amd64 only - cross-compiling ARM64 requires ARM64 runner)
-          - os: linux
-            arch: amd64
-            runs-on: ubuntu-latest
-            output_name: rcstudio
-          # macOS (both architectures available)
-          - os: darwin
-            arch: amd64
-            runs-on: macos-13
-            output_name: rcstudio-mac-amd64
-          - os: darwin
-            arch: arm64
-            runs-on: macos-14
-            output_name: rcstudio-mac-arm64
 
     steps:
       - name: Checkout code
@@ -64,13 +50,6 @@ jobs:
 
       - name: Download dependencies
         run: go mod download
-
-      - name: Install Linux dependencies
-        if: matrix.os == 'linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
-        shell: bash
 
       - name: Build for ${{ matrix.os }}/${{ matrix.arch }}
         env:
