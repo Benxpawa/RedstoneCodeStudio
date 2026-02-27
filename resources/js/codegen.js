@@ -6,9 +6,7 @@
 
 // 节点链接辅助
 
-
 // 根据输入端口名称，找到连接到该端口的源节点
- 
 function getLinkedSourceNode(node, inputName) {
     if (!node.inputs || !litegraphGraph) return null;
     const inp = node.inputs.find(i => i.name === inputName);
@@ -18,9 +16,7 @@ function getLinkedSourceNode(node, inputName) {
     return litegraphGraph.getNodeById(link.origin_id);
 }
 
-
 // 找到节点第 outputIndex 个 exec 输出端口连接的下一个节点
- 
 function findNextExec(node, outputIndex) {
     if (!node.outputs || !litegraphGraph) return null;
     let execCount = 0;
@@ -41,12 +37,12 @@ function findNextExec(node, outputIndex) {
 
 // 表达式解析（节点输入 → Java 表达式）
 
-
 // 将节点的字符串输入解析为对应的 Java 表达式
- 
 function resolveString(node, inputName, fallback) {
     const src = getLinkedSourceNode(node, inputName);
     if (!src) return fallback !== undefined ? fallback : '"Hello"';
+
+    // 数据节点
     if (src.type === "values/text")
         return JSON.stringify(src.properties.text);
     if (src.type === "values/colorText")
@@ -60,28 +56,57 @@ function resolveString(node, inputName, fallback) {
         return tpl.replace('"{player}"', '" + ' + playerExpr + ' + "')
                   .replace('{player}',   '" + ' + playerExpr + ' + "');
     }
+
+    // 配置读取节点
     if (src.type === "config/getString")
         return 'getConfig().getString("' + (src.properties["键"] || "key") + '", "")';
+
+    // 逻辑节点
     if (src.type === "logic/strConcat") {
         const a = resolveString(src, "字符串A", '"A"');
         const b = resolveString(src, "字符串B", '"B"');
         return `(${a} + ${b})`;
     }
+
+    // 网络节点
     if (src.type === "network/parseJsonField") {
         const jsonSrc = getLinkedSourceNode(src, "JSON字符串");
         const jsonExpr = jsonSrc ? resolveString(src, "JSON字符串", '"[]"') : "__responseBody";
         const field = src.properties["字段名"] || "name";
         return `__parseJson(${jsonExpr}, "${field}")`;
     }
+
+    // 事件节点字符串输出
+    if (src.type === "events/playerChat")
+        return "event.getMessage()";
+    if (src.type === "events/playerJoin")
+        return "event.getJoinMessage()";
+    if (src.type === "events/playerQuit")
+        return "event.getQuitMessage()";
+    if (src.type === "events/playerDeath")
+        return "event.getDeathMessage()";
+    if (src.type === "events/playerLogin")
+        return "event.getAddress().toString()";
+    if (src.type === "events/blockBreak" || src.type === "events/blockPlace")
+        return "event.getBlock().getType().toString()";
+    if (src.type === "events/playerDropItem" || src.type === "events/playerPickupItem")
+        return "event.getItem().getType().toString()";
+    if (src.type === "events/playerInteract")
+        return "event.getAction().name()";
+    if (src.type === "events/playerLevelUp")
+        return "String.valueOf(event.getNewLevel())";
+    if (src.type === "events/playerDamaged" || src.type === "events/entityDamageByPlayer")
+        return "String.valueOf(event.getDamage())";
+
+    // 默认回退
     return fallback !== undefined ? fallback : '"Hello"';
 }
 
-
 // 将节点的数值输入解析为对应的 Java 表达式
- 
 function resolveNumber(node, inputName, fallback) {
     const src = getLinkedSourceNode(node, inputName);
     if (!src) return fallback !== undefined ? String(fallback) : "100";
+
     if (src.type === "values/number") return String(src.properties.num);
     if (src.type === "config/getInt")
         return 'getConfig().getInt("' + (src.properties["键"] || "key") + '", 0)';
@@ -109,24 +134,33 @@ function resolveNumber(node, inputName, fallback) {
         const op = src.properties["运算"] || "+";
         return `(${aNum} ${op} ${bNum})`;
     }
+
+    // 事件节点数字输出
+    if (src.type === "events/playerLevelUp")
+        return "event.getNewLevel()";
+    if (src.type === "events/playerDamaged" || src.type === "events/entityDamageByPlayer")
+        return "event.getDamage()";
+
     return fallback !== undefined ? String(fallback) : "100";
 }
 
-
 // 根据源节点类型返回对应的 Java 玩家变量名
- 
 function resolvePlayer(node) {
     if (!node) return "player";
-    const t = node.type;
-    if (["events/playerJoin", "events/playerQuit", "events/playerDeath",
-         "events/playerChat", "events/playerMove", "events/playerRespawn",
-         "events/playerInteract", "command/onCommand"].includes(t)) return "player";
+
+    // 大多数事件都有玩家，且代码生成中已定义 player = event.getPlayer()
+    if (node.type.startsWith("events/")) {
+        // 排除一些可能没有玩家的事件（如服务器事件），但当前事件列表均有玩家
+        return "player";
+    }
+    if (node.type === "command/onCommand") {
+        return "player";
+    }
+    // 其他节点如 player/getHealth 等，其输入源可能也是事件，但会在递归中处理
     return "player";
 }
 
-
 // 从节点的玩家输入端口追溯并返回对应的 Java 玩家变量名
- 
 function resolvePlayerInput(node, inputName) {
     const src = getLinkedSourceNode(node, inputName);
     return resolvePlayer(src);
@@ -134,9 +168,7 @@ function resolvePlayerInput(node, inputName) {
 
 // 执行流遍历 → Java 语句生成
 
-
 // 从起始节点沿执行流遍历，将每个节点翻译为 Java 代码行
- 
 function traverseExec(startNode, indent, imports) {
     const lines = [];
     let cur = startNode;
@@ -593,18 +625,14 @@ function traverseExec(startNode, indent, imports) {
     return lines;
 }
 
-
 // 将 traverseExec 结果追加到已有的 lines 数组
- 
 function traverseExecInto(startNode, indent, imports, lines) {
     traverseExec(startNode, indent, imports).forEach(l => lines.push(l));
 }
 
 //  主生成函数 
 
-
 // 遍历节点图，生成完整的 Bukkit 插件 Java 源码并写入编辑器
- 
 function generateJava() {
     if (!editors.java) return;
     const graph = litegraphGraph;
@@ -796,9 +824,7 @@ function generateJava() {
     generatePluginYml();
 }
 
-
 // 根据表单和节点图中的指令/权限节点，生成 plugin.yml 内容
- 
 function generatePluginYml() {
     if (!editors.yml) return;
     const name    = document.getElementById('pluginName')?.value    || 'MagicPlugin';
@@ -850,9 +876,7 @@ function generatePluginYml() {
     editors.yml.setValue(yml, -1);
 }
 
-
 // 合并配置列表与节点图中引用的配置键，生成 config.yml 内容
- 
 function generateConfigYml() {
     if (!editors.cfg) return;
     let yml = "# 插件默认配置文件\n";
@@ -875,16 +899,10 @@ function generateConfigYml() {
         }
     });
 
-    // if (yml.trim() === "# 插件默认配置文件") {
-    //     yml += "# 暂无配置项，请在节点图中使用「读取配置」节点或在配置页添加配置项\n";
-    // }
-
     editors.cfg.setValue(yml, -1);
 }
 
-
 // 根据表单中的 Maven 坐标等信息，生成 pom.xml 内容
- 
 function generatePomXml() {
     if (!editors.pom) return;
     const groupId    = document.getElementById('groupId')?.value      || 'me.yourname';
@@ -972,9 +990,7 @@ function generatePomXml() {
     editors.pom.setValue(pom, -1);
 }
 
-
 // 重新生成全部输出文件（Java / plugin.yml / config.yml / pom.xml）
- 
 function regenerateAll() {
     if (!litegraphGraph) return;
     generateJava();

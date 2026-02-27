@@ -890,7 +890,7 @@ function registerAllNodes() {
 
     function FormatTextNode() {
         this.addOutput("值", "string");
-        this.addInput("玩家名", "string");
+        this.addInput("玩家名", "player");
         this.addProperty("template", "欢迎 {player} 加入！");
         this.addWidget("text", "模板文本", "欢迎 {player} 加入！", (v) => {
             this.properties.template = v; setTimeout(regenerateAll, 80);
