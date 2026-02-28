@@ -14,123 +14,169 @@ env:
   GO_VERSION: '1.25'
 
 jobs:
-  build:
-    name: Build for Windows
+  build-windows-amd64:
+    name: Build for Windows x64
     runs-on: windows-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+      - name: Install go-winres
+        run: go install github.com/tc-hib/go-winres@latest
 
       - name: Download dependencies
         run: go mod download
 
+      - name: Run go-winres
+        run: go-winres make
+
       - name: Build
-        env:
-          GOOS: windows
-          GOARCH: amd64
+        shell: bash
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
           if [ "$VERSION" = "$GITHUB_REF" ]; then
             VERSION="dev-${GITHUB_SHA::7}"
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Building version: $VERSION"
-          LDFLAGS="-s -w -X main.Version=$VERSION -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          go build -ldflags "$LDFLAGS" -o rcstudio.exe main.go
-        shell: bash
+          BUILDTIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-s -w -H windowsgui -X main.Version=${VERSION} -X main.BuildTime=${BUILDTIME}"
+          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o rcstudio.exe .
 
-      - name: Prepare release assets
-        run: |
-          # 不带 Maven 的精简版
-          7z a -tzip RCStudio-${{ env.VERSION }}.zip rcstudio.exe resources\index.html resources\js
-          # 带 Maven 的完整版
-          7z a -tzip RCStudio-${{ env.VERSION }}-Full.zip rcstudio.exe resources
+      - name: Package
         shell: pwsh
+        run: |
+          7z a -tzip "RCStudio-windows-amd64-${{ env.VERSION }}.zip" rcstudio.exe resources\index.html resources\js
+          7z a -tzip "RCStudio-windows-amd64-full-${{ env.VERSION }}.zip" rcstudio.exe resources
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: rcstudio-windows-amd64
-          path: |
-            RCStudio-${{ env.VERSION }}.zip
-            RCStudio-${{ env.VERSION }}-Full.zip
+          path: RCStudio-windows-amd64-*.zip
+          retention-days: 30
+
+  build-crossplatform:
+    name: Build for ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: Windows ARM64
+            goos: windows
+            goarch: arm64
+            binary: rcstudio-arm64.exe
+            artifact: rcstudio-windows-arm64
+            prefix: RCStudio-windows-arm64
+          - name: Linux x64
+            goos: linux
+            goarch: amd64
+            binary: rcstudio-linux
+            artifact: rcstudio-linux-amd64
+            prefix: RCStudio-linux-amd64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install go-winres (Windows ARM64 only)
+        if: matrix.goos == 'windows'
+        run: go install github.com/tc-hib/go-winres@latest
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run go-winres (Windows ARM64 only)
+        if: matrix.goos == 'windows'
+        run: go-winres make
+
+      - name: Build
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          if [ "$VERSION" = "$GITHUB_REF" ]; then
+            VERSION="dev-${GITHUB_SHA::7}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          BUILDTIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILDTIME}"
+          CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -ldflags "${LDFLAGS}" -o ${{ matrix.binary }} .
+
+      - name: Package
+        run: |
+          VERSION="${{ env.VERSION }}"
+          if [ "${{ matrix.goos }}" = "linux" ]; then
+            chmod +x ${{ matrix.binary }}
+          fi
+          zip -r "${{ matrix.prefix }}-${VERSION}.zip" ${{ matrix.binary }} resources/index.html resources/js
+          zip -r "${{ matrix.prefix }}-full-${VERSION}.zip" ${{ matrix.binary }} resources
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.prefix }}-*.zip
           retention-days: 30
 
   release:
     name: Create Release
-    needs: build
+    needs: [build-windows-amd64, build-crossplatform]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Extract version and custom notes
+      - name: Extract version and changelog
         id: changelog
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          echo "version=$TAG" >> $GITHUB_OUTPUT
-          
-          # 读取 RELEASE_NOTES.md
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           if [ -f "RELEASE_NOTES.md" ]; then
-            echo "Found RELEASE_NOTES.md, using it for release body."
-            cat RELEASE_NOTES.md > release_body_content.txt
+            cp RELEASE_NOTES.md release_body_content.txt
           else
-            echo "RELEASE_NOTES.md not found, generating changelog from git log."
             PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
-            git log "$PREV_TAG..$GITHUB_REF_NAME" --pretty=format:"- %s (%h)" --no-merges > release_body_content.txt || echo "- 首次发布" > release_body_content.txt
+            git log "${PREV_TAG}..${TAG}" --pretty=format:"- %s (%h)" --no-merges > release_body_content.txt || echo "- 首次发布" > release_body_content.txt
           fi
 
-      - name: Generate final release notes
-        id: release-notes
+      - name: Generate release notes
         run: |
           VERSION="${{ steps.changelog.outputs.version }}"
           REPO="${{ github.repository }}"
-          CHANGELOG_CONTENT=$(cat release_body_content.txt)
-
-          cat > final_release_notes.txt << EOF
-          ## RedstoneCode Studio $VERSION
+          cat > final_release_notes.txt << 'EOF'
+          ## RedstoneCode Studio VERSION_PLACEHOLDER
 
           ### 下载说明
-          - **RCStudio-$VERSION.zip**
-          电脑上已安装插件编译环境（Maven）的精简包
-          - **RCStudio-$VERSION-Full.zip**
-          电脑上未安装插件编译环境（Maven）的完整包（小白请选这个）
+
+          | 文件 | 说明 |
+          |------|------|
+          | RCStudio-windows-amd64-VERSION_PLACEHOLDER.zip | Windows x64 精简版 |
+          | RCStudio-windows-amd64-full-VERSION_PLACEHOLDER.zip | Windows x64 完整版（小白选这个） |
+          | RCStudio-windows-arm64-VERSION_PLACEHOLDER.zip | Windows ARM64 精简版 |
+          | RCStudio-windows-arm64-full-VERSION_PLACEHOLDER.zip | Windows ARM64 完整版 |
+          | RCStudio-linux-amd64-VERSION_PLACEHOLDER.zip | Linux x64 精简版 |
+          | RCStudio-linux-amd64-full-VERSION_PLACEHOLDER.zip | Linux x64 完整版 |
 
           ### 更新内容
-          $CHANGELOG_CONTENT
-
-          ---
-          **提示**: 如果遇到问题，请提交 [Issue](https://github.com/$REPO/issues)
           EOF
+          sed -i "s/VERSION_PLACEHOLDER/${VERSION}/g" final_release_notes.txt
+          cat release_body_content.txt >> final_release_notes.txt
+          printf "\n---\n**提示**: 如果遇到问题，请提交 [Issue](https://github.com/%s/issues)\n" "${REPO}" >> final_release_notes.txt
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -140,8 +186,7 @@ jobs:
           body_path: final_release_notes.txt
           draft: false
           prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
-          files: |
-            artifacts/*/*.zip
+          files: artifacts/*.zip
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
