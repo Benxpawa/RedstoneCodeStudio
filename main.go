@@ -12,20 +12,14 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
-	"unsafe"
 
-	webview "github.com/webview/webview_go"
 	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
 var (
-	// Version 信息由 CI 构建时通过 ldflags 注入
-	Version   = "dev"
-	BuildTime = "unknown"
-	buildLock sync.Mutex
-	ProgramDir string
+	buildLock    sync.Mutex
+	ProgramDir   string
 	MavenCommand string
 )
 
@@ -34,7 +28,6 @@ const (
 )
 
 func init() {
-
 	exePath, err := os.Executable()
 	if err != nil {
 		log.Fatalf("无法获取程序路径: %v", err)
@@ -47,7 +40,6 @@ func init() {
 }
 
 func getMavenCommand() string {
-
 	mavenBin := filepath.Join(ProgramDir, "resources", "maven", "bin")
 
 	var mvnExec string
@@ -61,7 +53,6 @@ func getMavenCommand() string {
 	}
 
 	if info, err := os.Stat(mvnExec); err == nil && !info.IsDir() {
-
 		if runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
 			if err := os.Chmod(mvnExec, 0755); err != nil {
 				log.Printf("警告: 无法为内置 Maven 添加执行权限: %v", err)
@@ -88,81 +79,9 @@ type BuildRequest struct {
 	Author      string `json:"author"`
 	Website     string `json:"website"`
 	JavaCode    string `json:"javaCode"`
-
-	PluginYaml string `json:"pluginYml"`
-	ConfigYaml string `json:"configYml"`
-	PomXml     string `json:"pomXml"`
-}
-
-func applyWindowsStyle(hwnd uintptr) {
-	dwmapi := syscall.NewLazyDLL("dwmapi.dll")
-	procDwmSetWindowAttribute := dwmapi.NewProc("DwmSetWindowAttribute")
-
-	const (
-		DWMWA_USE_IMMERSIVE_DARK_MODE  = 20
-		DWMWA_WINDOW_CORNER_PREFERENCE = 33
-		DWMWA_MICA                     = 38
-		DWMWCP_ROUND                   = 2
-	)
-
-	darkMode := uint32(1)
-	procDwmSetWindowAttribute.Call(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE,
-		uintptr(unsafe.Pointer(&darkMode)), unsafe.Sizeof(darkMode))
-
-	cornerPref := uint32(DWMWCP_ROUND)
-	procDwmSetWindowAttribute.Call(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE,
-		uintptr(unsafe.Pointer(&cornerPref)), unsafe.Sizeof(cornerPref))
-
-	mica := uint32(1)
-	procDwmSetWindowAttribute.Call(hwnd, DWMWA_MICA,
-		uintptr(unsafe.Pointer(&mica)), unsafe.Sizeof(mica))
-
-	user32 := syscall.NewLazyDLL("user32.dll")
-	procRedrawWindow := user32.NewProc("RedrawWindow")
-	procRedrawWindow.Call(hwnd, 0, 0, 0x0001)
-}
-
-func tryLegacyAcrylic(hwnd uintptr) {
-	user32 := syscall.NewLazyDLL("user32.dll")
-	procSetWindowCompositionAttribute := user32.NewProc("SetWindowCompositionAttribute")
-
-	const (
-		WCA_ACCENT_POLICY               = 19
-		ACCENT_ENABLE_ACRYLICBLURBEHIND = 4
-	)
-
-	type AccentPolicy struct {
-		AccentState   uint32
-		AccentFlags   uint32
-		GradientColor uint32
-		AnimationId   uint32
-	}
-
-	type WindowCompositionAttribData struct {
-		Attribute  uint32
-		Data       uintptr
-		SizeOfData uintptr
-	}
-
-	accent := &AccentPolicy{
-		AccentState:   ACCENT_ENABLE_ACRYLICBLURBEHIND,
-		AccentFlags:   0,
-		GradientColor: 0x99FFFFFF,
-		AnimationId:   0,
-	}
-
-	data := &WindowCompositionAttribData{
-		Attribute:  WCA_ACCENT_POLICY,
-		Data:       uintptr(unsafe.Pointer(accent)),
-		SizeOfData: unsafe.Sizeof(*accent),
-	}
-
-	ret, _, _ := procSetWindowCompositionAttribute.Call(hwnd, uintptr(unsafe.Pointer(data)))
-	if ret == 0 {
-		log.Println("旧版亚克力 API 调用失败")
-	} else {
-		log.Println("成功应用旧版亚克力效果")
-	}
+	PluginYaml  string `json:"pluginYml"`
+	ConfigYaml  string `json:"configYml"`
+	PomXml      string `json:"pomXml"`
 }
 
 func main() {
@@ -183,24 +102,8 @@ func main() {
 
 	waitForServer(url)
 
-	w := webview.New(false)
-	defer w.Destroy()
-
-	w.SetTitle("RedstoneCode Studio")
-	w.SetSize(1280, 800, webview.HintNone)
-	w.Navigate(url)
-
-	hwnd := w.Window()
-	if hwnd != nil {
-		go func() {
-			time.Sleep(100 * time.Millisecond)
-			applyWindowsStyle(uintptr(unsafe.Pointer(hwnd)))
-		}()
-	} else {
-		log.Println("无法获取窗口句柄")
-	}
-
-	w.Run()
+	// openUI 由各平台的实现文件提供
+	openUI(url)
 }
 
 func getFreePort() int {
@@ -297,7 +200,6 @@ func buildHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mavenCmd := MavenCommand
-
 	mavenHome := filepath.Join(ProgramDir, "resources", "maven")
 
 	var cmd *exec.Cmd
@@ -307,10 +209,7 @@ func buildHandler(w http.ResponseWriter, r *http.Request) {
 		cmd = exec.Command(mavenCmd, "clean", "package", "-DskipTests", "-q")
 	}
 	cmd.Dir = projectDir
-
-	cmd.Env = append(os.Environ(),
-		"MAVEN_HOME="+mavenHome,
-	)
+	cmd.Env = append(os.Environ(), "MAVEN_HOME="+mavenHome)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
