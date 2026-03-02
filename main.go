@@ -23,9 +23,8 @@ var (
 	MavenCommand string
 )
 
-const (
-	TempBuildDir = "./builds"
-)
+// TempBuildDir 在 init() 中基于 ProgramDir 动态设置
+var TempBuildDir string
 
 func init() {
 	exePath, err := os.Executable()
@@ -37,6 +36,8 @@ func init() {
 
 	MavenCommand = getMavenCommand()
 	log.Printf("使用 Maven 命令: %s", MavenCommand)
+
+	TempBuildDir = filepath.Join(ProgramDir, "builds")
 }
 
 func getMavenCommand() string {
@@ -75,9 +76,12 @@ type BuildRequest struct {
 	PluginName  string `json:"pluginName"`
 	PackageName string `json:"packageName"`
 	MainClass   string `json:"mainClass"`
+	FullMain    string `json:"fullMain"`
 	Version     string `json:"version"`
 	Author      string `json:"author"`
 	Website     string `json:"website"`
+	GroupId     string `json:"groupId"`
+	ArtifactId  string `json:"artifactId"`
 	JavaCode    string `json:"javaCode"`
 	PluginYaml  string `json:"pluginYml"`
 	ConfigYaml  string `json:"configYml"`
@@ -147,12 +151,9 @@ func buildHandler(w http.ResponseWriter, r *http.Request) {
 	projectDir := filepath.Join(TempBuildDir, req.PluginName)
 
 	if err := os.RemoveAll(projectDir); err != nil {
-		backupDir := projectDir + "_backup_" + time.Now().Format("20060102150405")
-		if renameErr := os.Rename(projectDir, backupDir); renameErr != nil {
-			log.Printf("无法删除或重命名旧目录: %v", err)
-		} else {
-			log.Printf("旧目录已重命名为: %s", backupDir)
-		}
+		log.Printf("无法清除旧构建目录 %s: %v，中止本次构建", projectDir, err)
+		http.Error(w, "无法清除旧构建目录，请稍后重试", http.StatusInternalServerError)
+		return
 	}
 
 	if err := os.MkdirAll(projectDir, 0755); err != nil {
@@ -235,21 +236,59 @@ func buildHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 优先选择不含 sources/original 后缀的主 JAR
 	jarPath := jarFiles[0]
+	for _, f := range jarFiles {
+		base := filepath.Base(f)
+		if !strings.Contains(base, "sources") && !strings.Contains(base, "original") {
+			jarPath = f
+			break
+		}
+	}
 	log.Printf("找到 JAR 文件: %s", jarPath)
 
-	w.Header().Set("Content-Disposition", "attachment; filename="+req.PluginName+".jar")
-	http.ServeFile(w, r, jarPath)
+	jarData, readErr := os.ReadFile(jarPath)
+	if readErr != nil {
+		log.Printf("读取 JAR 文件失败: %v", readErr)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "读取 JAR 文件失败"})
+		return
+	}
 
-	log.Printf("JAR 文件已发送: %s", jarPath)
+	// 发送完成后异步清理构建目录，释放磁盘空间
+	defer func() {
+		go func() {
+			if rmErr := os.RemoveAll(projectDir); rmErr != nil {
+				log.Printf("清理构建目录失败: %v", rmErr)
+			}
+		}()
+	}()
+
+	w.Header().Set("Content-Disposition", `attachment; filename="`+req.PluginName+`.jar"`)
+	w.Header().Set("Content-Type", "application/java-archive")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(jarData)))
+	w.WriteHeader(http.StatusOK)
+	w.Write(jarData)
+	log.Printf("JAR 文件已发送: %s (%d bytes)", jarPath, len(jarData))
 }
 
 func getPom(req BuildRequest) string {
+	groupId := req.GroupId
+	if groupId == "" {
+		groupId = req.PackageName
+	}
+	artifactId := req.ArtifactId
+	if artifactId == "" {
+		artifactId = strings.ToLower(req.PluginName)
+	}
 	return `<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http:
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>` + req.PackageName + `</groupId>
-    <artifactId>` + req.PluginName + `</artifactId>
+    <groupId>` + groupId + `</groupId>
+    <artifactId>` + artifactId + `</artifactId>
     <version>` + req.Version + `</version>
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -267,9 +306,26 @@ func getPom(req BuildRequest) string {
     <repositories>
         <repository>
             <id>spigot-repo</id>
-            <url>https:
+            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
     </repositories>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Main-Class>` + req.PackageName + `.` + req.MainClass + `</Main-Class>
+                        </manifestEntries>
+                    </archive>
+                    <finalName>` + req.PluginName + `</finalName>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>`
 }
 

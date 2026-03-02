@@ -241,6 +241,7 @@ function registerAllNodes() {
         this.addProperty("权限节点", "myplugin.use");
         this.addWidget("text", "权限节点", "myplugin.use", (v) => {
             this.properties["权限节点"] = v;
+            setTimeout(regenerateAll, 80);
         });
         this.size = [210, 100];
         this.onConfigure = function () {

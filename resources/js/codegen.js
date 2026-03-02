@@ -47,11 +47,14 @@ function resolveString(node, inputName, fallback) {
     if (src.type === "values/playerName")
         return resolvePlayer(src) + ".getName()";
     if (src.type === "values/formatText") {
-        const nameSrc = getLinkedSourceNode(src, "玩家名");
-        const playerExpr = nameSrc ? resolvePlayer(nameSrc) + ".getName()" : "player.getName()";
-        const tpl = JSON.stringify(src.properties.template || "");
-        return tpl.replace('"{player}"', '" + ' + playerExpr + ' + "')
-            .replace('{player}', '" + ' + playerExpr + ' + "');
+        const playerExpr = resolvePlayerInput(src, "玩家名") !== "player"
+            ? resolvePlayerInput(src, "玩家名") + ".getName()"
+            : "player.getName()";
+        const tpl = (src.properties.template || "");
+        // 将模板按 {player} 切分后重新拼接为 Java 字符串连接表达式
+        const parts = tpl.split("{player}");
+        if (parts.length === 1) return JSON.stringify(tpl);
+        return parts.map(p => JSON.stringify(p)).join(' + ' + playerExpr + ' + ');
     }
 
     // 配置读取节点
@@ -123,6 +126,21 @@ function resolveString(node, inputName, fallback) {
     if (src.type === "convert/playerToName") {
         const plrSrc = getLinkedSourceNode(src, "玩家");
         return `${resolvePlayer(plrSrc)}.getName()`;
+    }
+
+    // 玩家数据节点 → 字符串
+    if (src.type === "player/getItemInHand") {
+        return `${resolvePlayerInput(src, "玩家")}.getInventory().getItemInMainHand().getType().name()`;
+    }
+
+        // 网络工具节点
+    if (src.type === "network/buildJsonObject") {
+        const k1 = resolveString(src, "键1", '"key1"');
+        const v1 = resolveString(src, "值1", '"val1"');
+        const k2 = resolveString(src, "键2", '"key2"');
+        const v2 = resolveString(src, "值2", '"val2"');
+        // 手动拼接 JSON，避免引入额外序列化依赖
+        return `("{\"" + ${k1} + "\":\"" + ${v1} + "\",\"" + ${k2} + "\":\"" + ${v2} + "\"}")`;
     }
 
     // 默认回退
@@ -236,6 +254,27 @@ function resolvePlayerInput(node, inputName) {
 
     // 其他情况，调用原来的 resolvePlayer
     return resolvePlayer(src);
+}
+
+// 布尔值解析（用于条件节点）
+function resolveBoolean(node, inputName, fallback) {
+    const src = getLinkedSourceNode(node, inputName);
+    if (!src) return fallback !== undefined ? String(fallback) : "false";
+    if (src.type === "player/isOnline") {
+        const nameExpr = resolveString(src, "玩家名", '""');
+        return `(org.bukkit.Bukkit.getPlayer(${nameExpr}) != null)`;
+    }
+    return fallback !== undefined ? String(fallback) : "false";
+}
+
+// 位置解析（用于需要 Location 参数的节点）
+function resolveLocation(node, inputName) {
+    const src = getLinkedSourceNode(node, inputName);
+    if (!src) return "player.getLocation()";
+    if (src.type === "player/getLocation") {
+        return `${resolvePlayerInput(src, "玩家")}.getLocation()`;
+    }
+    return "player.getLocation()";
 }
 
 // 执行流遍历 → Java 语句生成
@@ -818,7 +857,11 @@ function generateJava() {
     const implPart = needsListener ? " implements Listener" : "";
 
     // 注入 onEnable 前置调用
-    const enableMethod = methods.find(m => m.type === "onEnable");
+    let enableMethod = methods.find(m => m.type === "onEnable");
+    if (!enableMethod && (needsListener || cmdNodes.length > 0 || configEntries.length > 0)) {
+        enableMethod = { type: "onEnable", lines: [] };
+        methods.unshift(enableMethod);
+    }
     if (enableMethod) {
         if (needsListener)
             enableMethod.lines.unshift("        Bukkit.getPluginManager().registerEvents(this, this);");
@@ -838,7 +881,7 @@ function generateJava() {
     classLines.push(`public class ${cls} extends JavaPlugin${implPart}${extraImpl} {`);
     classLines.push("");
 
-    // 变量存储字段（仅在有变量节点时生成）
+    // 变量存储字段
     const hasVars = graph.findNodesByType("vars/setVar").length > 0 ||
         graph.findNodesByType("vars/getVarStr").length > 0 ||
         graph.findNodesByType("vars/getVarNum").length > 0;
@@ -937,7 +980,7 @@ function generateJava() {
         classLines.push("    }");
     }
 
-    // __parseDouble 工具方法（仅在有字符串转数字节点时生成）
+    // __parseDouble 工具方法
     const hasStrToNum = graph.findNodesByType("convert/stringToNumber").length > 0;
     if (hasStrToNum) {
         classLines.push("");

@@ -7,8 +7,13 @@
 function compilePlugin() {
     const btn = document.getElementById('compileBtn');
 
-    const pluginNameVal = document.getElementById('pluginName')?.value?.trim() || '';
-    const mainClassVal  = document.getElementById('mainClass')?.value?.trim()  || '';
+    const pluginNameVal  = document.getElementById('pluginName')?.value?.trim()      || '';
+    const mainClassVal   = document.getElementById('mainClass')?.value?.trim()       || '';
+    const versionVal     = document.getElementById('pluginVersion')?.value?.trim()   || '1.0';
+    const authorVal      = document.getElementById('author')?.value?.trim()          || '';
+    const websiteVal     = document.getElementById('website')?.value?.trim()         || '';
+    const groupIdVal     = document.getElementById('groupId')?.value?.trim()         || '';
+    const artifactIdVal  = document.getElementById('artifactId')?.value?.trim()      || '';
 
     // 校验插件名
     if (!pluginNameVal || !/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(pluginNameVal)) {
@@ -28,12 +33,12 @@ function compilePlugin() {
     }
 
     showStatus("正在连接编译服务器...");
-    btn.disabled = true;
+    if (btn) btn.disabled = true;
 
     const code = editors.java ? editors.java.getValue() : "";
     if (!code.includes("JavaPlugin")) {
         alert("请先设计节点逻辑！");
-        btn.disabled = false;
+        if (btn) btn.disabled = false;
         return;
     }
 
@@ -43,15 +48,24 @@ function compilePlugin() {
     const pkg = pkgMatch   ? pkgMatch[1]   : getMainClassParts().pkg;
     const cls = classMatch ? classMatch[1] : getMainClassParts().cls;
 
+    // 90 秒超时(?)，或者超时时间更长一点？
+    const controller = new AbortController();
+    const timeoutId  = setTimeout(() => controller.abort(), 90000);
+
     fetch('/api/build', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
             pluginName:  pluginNameVal,
             packageName: pkg,
             mainClass:   cls,
             fullMain:    pkg + '.' + cls,
-            version:     "1.0",
+            version:     versionVal,
+            author:      authorVal,
+            website:     websiteVal,
+            groupId:     groupIdVal,
+            artifactId:  artifactIdVal,
             javaCode:    code,
             pluginYml:   editors.yml?.getValue() || "",
             configYml:   editors.cfg?.getValue() || "",
@@ -65,16 +79,24 @@ function compilePlugin() {
             a.href     = URL.createObjectURL(blob);
             a.download = pluginNameVal + ".jar";
             a.click();
+            showStatus("编译成功，JAR 文件已下载");
             showModalDialog("编译成功", "JAR 文件已生成并下载。", "success");
         } else {
             const d = await res.json().catch(() => ({}));
+            showStatus("编译失败");
             showModalDialog("编译失败", d.error || '未知错误', "error");
         }
     })
-    .catch(() => {
-        showModalDialog("网络错误", "后端未启动或网络连接失败。", "error");
+    .catch(err => {
+        if (err.name === 'AbortError') {
+            showModalDialog("编译超时", "编译请求超时（90秒），请检查后端服务或网络连接。", "error");
+        } else {
+            showModalDialog("网络错误", "后端未启动或网络连接失败。", "error");
+        }
+        showStatus("编译失败");
     })
     .finally(() => {
-        btn.disabled = false;
+        clearTimeout(timeoutId);
+        if (btn) btn.disabled = false;
     });
 }

@@ -25,13 +25,35 @@ function renderConfigEntries() {
     configEntries.forEach((e, i) => {
         const row = document.createElement('div');
         row.className = 'flex gap-2 items-center';
-        row.innerHTML = `
-            <input class="cfg-input flex-1" style="font-size:12px;" value="${e.key}"
-                oninput="configEntries[${i}].key=this.value;regenerateAll()" placeholder="键名">
-            <input class="cfg-input flex-1" style="font-size:12px;" value="${e.value}"
-                oninput="configEntries[${i}].value=this.value;regenerateAll()" placeholder="默认值">
-            <button onclick="removeConfigEntry(${i})"
-                class="text-red-400 hover:text-red-600 text-xs font-bold px-2">删除</button>`;
+
+        const keyInput = document.createElement('input');
+        keyInput.className = 'cfg-input flex-1';
+        keyInput.style.fontSize = '12px';
+        keyInput.placeholder = '键名';
+        keyInput.value = e.key;
+        keyInput.addEventListener('input', () => {
+            configEntries[i].key = keyInput.value;
+            regenerateAll();
+        });
+
+        const valInput = document.createElement('input');
+        valInput.className = 'cfg-input flex-1';
+        valInput.style.fontSize = '12px';
+        valInput.placeholder = '默认值';
+        valInput.value = e.value;
+        valInput.addEventListener('input', () => {
+            configEntries[i].value = valInput.value;
+            regenerateAll();
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'text-red-400 hover:text-red-600 text-xs font-bold px-2';
+        delBtn.textContent = '删除';
+        delBtn.addEventListener('click', () => removeConfigEntry(i));
+
+        row.appendChild(keyInput);
+        row.appendChild(valInput);
+        row.appendChild(delBtn);
         container.appendChild(row);
     });
 }
