@@ -125,22 +125,20 @@ jobs:
 
   build-macos:
     name: Build for ${{ matrix.name }}
+    runs-on: macos-latest
     strategy:
       matrix:
         include:
           - name: macOS x64
-            runs-on: macos-13
             goarch: amd64
             binary: rcstudio
             artifact: rcstudio-macos-amd64
             prefix: RCStudio-macos-amd64
           - name: macOS ARM64 (Apple Silicon)
-            runs-on: macos-14
             goarch: arm64
             binary: rcstudio
             artifact: rcstudio-macos-arm64
             prefix: RCStudio-macos-arm64
-    runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@v4
         with:

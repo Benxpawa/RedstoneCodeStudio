@@ -1,4 +1,4 @@
-//go:build (windows && arm64) || linux
+//go:build (windows && arm64) || linux || darwin
 
 package main
 
