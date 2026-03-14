@@ -105,7 +105,7 @@
         .panel-section-title {
             font-size: 10px;
             font-weight: 700;
-            color: #5a6282;
+            color: #dddddd;
             letter-spacing: 1.5px;
             text-transform: uppercase;
             padding: 10px 10px 10px 14px;
@@ -591,7 +591,7 @@
                 </svg>
                 <span class="font-bold text-gray-900 text-base tracking-tight">RC Studio</span>
                 <span
-                    class="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">1.0.0 - Release Candidate</span>
+                    class="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">1.0.1</span>
             </div>
             <nav class="tab-group">
                 <button onclick="switchTab('logic')" id="tab-logic" class="tab-btn active">逻辑设计</button>
@@ -1028,9 +1028,9 @@
                                     </p>
                                 </div>
                                 <div>
-                                    <label class="cfg-label">Bukkit API 版本</label>
+                                    <label class="cfg-label">请选择游戏版本</label>
                                     <select id="apiVersion" onchange="syncAllFiles()" class="cfg-input">
-                                        <option value="1.20">1.20（推荐）</option>
+                                        <option value="1.20">1.20</option>
                                         <option value="1.19">1.19</option>
                                         <option value="1.16">1.16</option>
                                         <option value="1.13">1.13</option>
@@ -1066,7 +1066,7 @@
                                         class="cfg-input resize-none"></textarea>
                                 </div>
                                 <div class="col-span-2">
-                                    <label class="cfg-label">软依赖（逗号分隔）</label>
+                                    <label class="cfg-label">软依赖（英文逗号分隔）</label>
                                     <input type="text" id="softDepend" oninput="syncAllFiles()"
                                         placeholder="Vault, PlaceholderAPI" class="cfg-input">
                                 </div>
@@ -1173,7 +1173,7 @@
                         Studio</div>
                     <div
                         style="font-size:11px; color:#9aa3b2; margin-top:4px; font-family:monospace; display:flex; gap:10px; align-items:center;">
-                        <span>1.0.0 - Release Candidate</span>
+                        <span>1.0.1</span>
                         <span
                             style="width:3px;height:3px;border-radius:50%;background:#d0d5e0;display:inline-block;"></span>
                         <span>RC Studio</span>
@@ -1308,6 +1308,19 @@
                             style="font-size:11px; color:#9aa3b2; text-decoration:none;"
                             onmouseover="this.style.color='#4a6fa5'" onmouseout="this.style.color='#9aa3b2'">官网 ↗</a>
                     </div>
+                    
+                    
+                    <div style="padding:10px 0; display:flex; flex-direction:column; gap:3px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:13px; font-weight:600; color:#1a2035; font-family:monospace;">Q群的群友们</span>
+                        </div>
+                        <div style="font-size:12px; color:#6b7890;">感谢他们给我的各种奇思妙想<br>加入Q群：768838110</div>
+                    </div>
+                    <div style="padding:10px 0; display:flex; align-items:center; padding-left:16px;">
+                        <a href="https://qm.qq.com/q/nTyw4DWUfu" target="_blank"
+                            style="font-size:11px; color:#9aa3b2; text-decoration:none;"
+                            onmouseover="this.style.color='#4a6fa5'" onmouseout="this.style.color='#9aa3b2'">加入 ↗</a>
+                    </div>
 
                 </div>
             </div>
@@ -1356,12 +1369,12 @@
                         </div>
                         <div style="display:flex; align-items:center; gap:8px; margin-bottom:3px;">
                             <span
-                                style="font-size:12px; font-weight:700; color:#1a2035; font-family:monospace;">v1.0.0</span>
+                                style="font-size:12px; font-weight:700; color:#1a2035; font-family:monospace;">v1.0.0 & v1.0.1</span>
                             <span
                                 style="font-size:10px; background:#fff0f0; color:#cc2222; border:1px solid #ffd0d0; border-radius:4px; padding:1px 6px;">最新</span>
                             <span style="font-size:11px; color:#b0b8c8;">Release Candidate</span>
                         </div>
-                        <div style="font-size:12px; color:#6b7890; line-height:1.6;">正式版发布<br><ul><li>修复部分接口前端定义后没有进行处理；</li><li>修复 pom.xml 语法错误；</li><li>将构建产物路径从相对路径更换为绝对路径；</li><li>优化安全性问题，防止 .mcbp 恶意注入</li><li>增加编译超时</li><li>修复些许已知问题</li><li>想吃薯条没吃上</li></ul></div>
+                        <div style="font-size:12px; color:#6b7890; line-height:1.6;">正式版发布<br><ul><li>[v1.0.1 更新]：修正了部分前端文案错误</li><li>修复部分接口前端定义后没有进行处理；</li><li>修复 pom.xml 语法错误；</li><li>将构建产物路径从相对路径更换为绝对路径；</li><li>优化安全性问题，防止 .mcbp 恶意注入</li><li>增加编译超时</li><li>修复些许已知问题</li><li>想吃薯条没吃上（[v1.0.1 更新]：吃上了）</li></ul></div>
                     </div>
 
                     <div style="margin-bottom:16px; position:relative;">
