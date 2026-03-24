@@ -1,3 +1,9 @@
+/**
+ * 校验表单后将 Java 代码发送到后端编译服务器，成功后下载 JAR 文件
+ * 依赖：constants.js (editors), form.js (validateMainClass, getMainClassParts),
+ *        ui.js (showStatus, showModalDialog, switchTab)
+ */
+
 function compilePlugin() {
     const btn = document.getElementById('compileBtn');
 
@@ -9,6 +15,7 @@ function compilePlugin() {
     const groupIdVal     = document.getElementById('groupId')?.value?.trim()         || '';
     const artifactIdVal  = document.getElementById('artifactId')?.value?.trim()      || '';
 
+    // 校验插件名
     if (!pluginNameVal || !/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(pluginNameVal)) {
         alert('插件名称格式不正确！\n只能包含字母、数字和连字符，且不能以数字开头。\n例如：MagicPlugin、my-plugin、TestPlugin123');
         switchTab('config');
@@ -16,6 +23,7 @@ function compilePlugin() {
         return;
     }
 
+    // 校验主类路径
     const mainClassErrors = validateMainClass(mainClassVal);
     if (mainClassErrors.length > 0) {
         alert('主类路径格式不正确！\n' + mainClassErrors[0] + '\n\n正确格式示例：me.yourname.myplugin.Main');
@@ -34,11 +42,13 @@ function compilePlugin() {
         return;
     }
 
+    // 从生成的代码中提取包名和类名
     const pkgMatch   = code.match(/^package\s+([\w.]+)\s*;/m);
     const classMatch = code.match(/public\s+class\s+(\w+)\s+extends/);
     const pkg = pkgMatch   ? pkgMatch[1]   : getMainClassParts().pkg;
     const cls = classMatch ? classMatch[1] : getMainClassParts().cls;
 
+    // 90 秒超时(?)，或者超时时间更长一点？
     const controller = new AbortController();
     const timeoutId  = setTimeout(() => controller.abort(), 90000);
 
@@ -79,7 +89,7 @@ function compilePlugin() {
     })
     .catch(err => {
         if (err.name === 'AbortError') {
-            showModalDialog("编译超时", "编译请求超时（90秒），请检查后端服务或网络连接。", "error");
+            showModalDialog("编译超时", "编译请求超时（90秒），可能是依赖下载失败，请尝试开启加速器再试", "error");
         } else {
             showModalDialog("网络错误", "后端未启动或网络连接失败。", "error");
         }

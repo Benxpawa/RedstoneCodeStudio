@@ -1,3 +1,12 @@
+/**
+ * 界面交互：标签页切换、模态弹窗、状态栏提示、节点面板过滤
+ * 依赖：constants.js (litegraphCanvas, editors)
+ */
+
+// 节点面板搜索
+
+
+// 按关键词过滤左侧节点面板
 function filterNodes(query) {
     const q = query.trim().toLowerCase();
     const detailsList = document.querySelectorAll('#node-panel details');
@@ -5,7 +14,9 @@ function filterNodes(query) {
     if (!q) {
         detailsList.forEach((details, index) => {
             details.open = (index === 0);
-            details.querySelectorAll('.node-item').forEach(item => { item.style.display = ''; });
+            details.querySelectorAll('.node-item').forEach(item => {
+                item.style.display = '';
+            });
         });
         return;
     }
@@ -22,10 +33,18 @@ function filterNodes(query) {
     });
 }
 
-function switchTab(tab) {
-    // 开源版本不包含联网功能，模板市场相关入口已禁用
-    if (tab === 'market') return;
+// 标签页切换
 
+
+// 切换顶部主标签页
+// 切换到 logic 时自适应画布尺寸；切换到 source 时刷新 Ace 编辑器
+
+function switchTab(tab) {
+    if (tab === 'market' && typeof isOnlineMode === 'function' && !isOnlineMode()) {
+        if (typeof showOfflineMarketGuide === 'function') showOfflineMarketGuide();
+        else if (typeof showStatus === 'function') showStatus('离线模式下无法打开模板市场');
+        return;
+    }
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + tab).classList.add('active');
     document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
@@ -40,8 +59,13 @@ function switchTab(tab) {
     if (tab === 'source') {
         Object.values(editors).forEach(e => { if (e) e.resize(); });
     }
+    if (tab === 'market') {
+        if (typeof marketInit === 'function') marketInit();
+    }
 }
 
+
+// 切换源码面板中的子标签（java / yml / cfg / pom）
 function switchSrcTab(name) {
     document.querySelectorAll('.src-tab').forEach(t => t.classList.remove('active'));
     document.getElementById('srctab-' + name).classList.add('active');
@@ -50,6 +74,10 @@ function switchSrcTab(name) {
     if (editors[name]) { setTimeout(() => editors[name].resize(), 30); }
 }
 
+// 状态栏 
+
+
+// 在状态栏显示短暂提示消息
 function showStatus(msg) {
     const el = document.getElementById('status');
     if (!el) return;
@@ -59,18 +87,28 @@ function showStatus(msg) {
     showStatus._timer = setTimeout(() => el.classList.add('hidden'), 5000);
 }
 
+// 模态弹窗
+
+
+// 显示自定义模态弹窗
+// @param {string} title   标题
+// @param {string} message 内容
+// @param {'success'|'error'|'info'} type 类型
 function showModalDialog(title, message, type = 'info') {
     const modal = document.getElementById('customModal');
     if (!modal) return;
+
     const titleEl = modal.querySelector('.modal-title');
     const msgEl   = document.getElementById('modalMessage');
     if (titleEl) titleEl.textContent = title;
     if (msgEl)   msgEl.textContent   = message;
+
     modal.classList.remove('success', 'error', 'info');
     modal.classList.add(type === 'success' || type === 'error' ? type : 'info');
     modal.classList.remove('hidden');
 }
 
+// 关闭模态弹窗
 function closeModal() {
     const modal = document.getElementById('customModal');
     if (modal) modal.classList.add('hidden');

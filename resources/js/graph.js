@@ -1,3 +1,8 @@
+/**
+ * 初始化 LiteGraph 画布：注册节点、配置右键菜单、拖拽放置、自动代码生成
+ * 依赖：constants.js, node-defs.js, codegen.js
+ */
+
 function initLiteGraph() {
     if (typeof LiteGraph === 'undefined') { setTimeout(initLiteGraph, 100); return; }
 
@@ -28,21 +33,23 @@ function initLiteGraph() {
     lgc.background_image = null;
     lgc.clear_background_color = "#181b27";
 
+    // 中文分类名称映射
     const CN_CATEGORY = {
-        "events":  "<i class=\"fa-regular fa-calendar\"></i> 事件节点",
+        "events": "<i class=\"fa-regular fa-calendar\"></i> 事件节点",
         "command": "<i class=\"fa-solid fa-terminal\"></i> 指令节点",
         "actions": "<i class=\"fa-solid fa-envelope\"></i> 消息动作",
-        "player":  "<i class=\"fa-solid fa-user\"></i> 玩家操控",
-        "world":   "<i class=\"fa-solid fa-globe\"></i> 世界操作",
-        "server":  "<i class=\"fa-solid fa-server\"></i> 服务器操作",
-        "logic":   "<i class=\"fa-solid fa-cogs\"></i> 逻辑控制",
+        "player": "<i class=\"fa-solid fa-user\"></i> 玩家操控",
+        "world": "<i class=\"fa-solid fa-globe\"></i> 世界操作",
+        "server": "<i class=\"fa-solid fa-server\"></i> 服务器操作",
+        "logic": "<i class=\"fa-solid fa-cogs\"></i> 逻辑控制",
         "network": "<i class=\"fa-solid fa-network-wired\"></i> 网络请求",
-        "config":  "<i class=\"fa-solid fa-gear\"></i> 配置文件",
-        "values":  "<i class=\"fa-solid fa-database\"></i> 数据节点",
-        "vars":    "<i class=\"fa-solid fa-box-archive\"></i> 变量存储",
+        "config": "<i class=\"fa-solid fa-gear\"></i> 配置文件",
+        "values": "<i class=\"fa-solid fa-database\"></i> 数据节点",
+        "vars": "<i class=\"fa-solid fa-box-archive\"></i> 变量存储",
         "convert": "<i class=\"fa-solid fa-shuffle\"></i> 类型转换",
     };
 
+    // 右键菜单
     function openAddNodeMenu(event, prev_menu) {
         const cats = {};
         for (const type of Object.keys(LiteGraph.registered_node_types)) {
@@ -61,7 +68,7 @@ function initLiteGraph() {
                         if (!node) return;
                         const rect = canvas.getBoundingClientRect();
                         const x = (event.clientX - rect.left) / lgc.ds.scale - lgc.ds.offset[0];
-                        const y = (event.clientY - rect.top)  / lgc.ds.scale - lgc.ds.offset[1];
+                        const y = (event.clientY - rect.top) / lgc.ds.scale - lgc.ds.offset[1];
                         node.pos = [x, y];
                         graph.add(node);
                     }
@@ -72,6 +79,7 @@ function initLiteGraph() {
         new LiteGraph.ContextMenu(catItems, { event, parentMenu: prev_menu });
     }
 
+    // 画布空白区右键菜单
     lgc.getMenuOptions = function () {
         return [
             {
@@ -80,6 +88,22 @@ function initLiteGraph() {
                 callback: (_v, _opts, ev, prev) => openAddNodeMenu(ev, prev)
             },
             null,
+            {
+                content: "<i class=\"fa-solid fa-layer-group\"></i> 添加分组框",
+                callback: (item, options, e) => {
+                    const group = new LiteGraph.LGraphGroup("新分组");
+
+                    // 坐标转换
+                    const rect = canvas.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) / lgc.ds.scale - lgc.ds.offset[0];
+                    const y = (e.clientY - rect.top) / lgc.ds.scale - lgc.ds.offset[1];
+
+                    group.pos = [x, y];
+                    group.size = [400, 250];
+                    group.color = "#333";
+                    graph.add(group);
+                }
+            },
             {
                 content: "适应全部节点",
                 callback: () => { lgc.ds.reset(); lgc.setDirty(true, true); }
@@ -96,6 +120,7 @@ function initLiteGraph() {
         ];
     };
 
+    // 节点右键菜单
     lgc.getNodeMenuOptions = function (node) {
         return [
             { content: "克隆节点", callback: () => { const c = node.clone(); c.pos = [node.pos[0] + 30, node.pos[1] + 30]; graph.add(c); } },
@@ -106,11 +131,13 @@ function initLiteGraph() {
 
     graph.start();
 
+    // 节点变化时延迟重新生成代码
     const regen = () => setTimeout(regenerateAll, 80);
-    graph.onNodeAdded        = regen;
-    graph.onNodeRemoved      = regen;
+    graph.onNodeAdded = regen;
+    graph.onNodeRemoved = regen;
     graph.onConnectionChange = regen;
 
+    // 拖拽放置节点到画布
     const blocklyDiv = document.getElementById('blocklyDiv');
     blocklyDiv.addEventListener('dragover', e => e.preventDefault());
     blocklyDiv.addEventListener('drop', e => {
@@ -119,7 +146,7 @@ function initLiteGraph() {
         if (!nodeType) return;
         const rect = canvas.getBoundingClientRect();
         const x = (e.clientX - rect.left) / lgc.ds.scale - lgc.ds.offset[0];
-        const y = (e.clientY - rect.top)  / lgc.ds.scale - lgc.ds.offset[1];
+        const y = (e.clientY - rect.top) / lgc.ds.scale - lgc.ds.offset[1];
         const node = LiteGraph.createNode(nodeType);
         if (node) { node.pos = [x, y]; graph.add(node); }
     });
@@ -130,6 +157,7 @@ function initLiteGraph() {
         });
     });
 
+    // 放置默认起始节点
     setTimeout(() => {
         const node = LiteGraph.createNode("events/onEnable");
         node.pos = [100, 140];

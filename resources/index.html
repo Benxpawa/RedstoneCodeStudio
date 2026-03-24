@@ -80,6 +80,86 @@
             background: transparent;
         }
 
+        .mode-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 6px;
+            border: 1px solid #eef2f7;
+            border-radius: 999px;
+            background: #f8fafc;
+            font-size: 10px;
+            font-weight: 600;
+            color: #9aa3b2;
+            cursor: pointer;
+            user-select: none;
+            opacity: .65;
+            transition: opacity .15s, border-color .15s, background .15s;
+        }
+
+        .mode-toggle:hover {
+            opacity: 1;
+            border-color: #e5e7eb;
+            background: #f1f5f9;
+        }
+
+        .mode-text {
+            display: none;
+        }
+
+        .mode-toggle:hover .mode-text {
+            display: inline;
+        }
+
+        .mode-toggle input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .mode-switch {
+            position: relative;
+            width: 28px;
+            height: 14px;
+            background: #e9eef5;
+            border-radius: 999px;
+            transition: background .2s ease;
+        }
+
+        .mode-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+            transition: transform .2s ease;
+        }
+
+        .mode-toggle input:checked + .mode-switch {
+            background: #1a2035;
+        }
+
+        .mode-toggle input:checked + .mode-switch::after {
+            transform: translateX(14px);
+        }
+
+        .mode-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #6b7280;
+            background: #f4f6fb;
+            border: 1px solid #e2e8f0;
+        }
+
         #node-panel {
             width: 220px;
             min-width: 220px;
@@ -569,7 +649,254 @@
             /* 图标与文字的间距 */
             vertical-align: middle;
         }
+        /* ===== 模板市场样式 ===== */
+        .mkt-cat {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #7a8494;
+            background: #f4f6fb;
+            border: 1.5px solid #e8edf5;
+            cursor: pointer;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+        .mkt-cat.active {
+            background: #1a2035;
+            color: #fff;
+            border-color: #1a2035;
+        }
+        .mkt-cat:hover:not(.active) {
+            background: #eaedf5;
+            color: #1a2035;
+        }
+        .mkt-card {
+            background: #fff;
+            border-radius: 16px;
+            border: 1.5px solid #e8edf5;
+            box-shadow: 0 2px 8px rgba(0,0,0,.04);
+            overflow: hidden;
+            transition: box-shadow .2s, transform .2s, border-color .2s;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+        }
+        .mkt-card:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,.10);
+            transform: translateY(-2px);
+            border-color: #c8d0e8;
+        }
+        .mkt-card-header {
+            padding: 18px 18px 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .mkt-card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .mkt-card-body {
+            padding: 0 18px 14px;
+            flex: 1;
+        }
+        .mkt-card-footer {
+            padding: 12px 18px;
+            border-top: 1px solid #f0f3f8;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fafbfd;
+        }
+        .mkt-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 5px;
+            font-size: 10px;
+            font-weight: 600;
+            background: #f0f3f8;
+            color: #6b7890;
+            border: 1px solid #e8edf5;
+        }
+        .mkt-import-btn {
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            background: #1a2035;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: background .15s;
+            white-space: nowrap;
+        }
+        .mkt-import-btn:hover {
+            background: #2a3555;
+        }
+        .mkt-spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid #e8edf5;
+            border-top-color: #4a80ff;
+            border-radius: 50%;
+            animation: mkt-spin .7s linear infinite;
+        }
+        @keyframes mkt-spin { to { transform: rotate(360deg); } }
 
+        /* ===== 账户系统样式 ===== */
+        .auth-modal-card {
+            position: relative;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 28px 60px rgba(0,0,0,.28);
+            width: 440px;
+            max-width: 94vw;
+            overflow: hidden;
+            animation: modalFadeIn .22s cubic-bezier(.34,1.2,.64,1);
+            display: flex;
+            flex-direction: column;
+        }
+        .auth-modal-header {
+            background: linear-gradient(135deg, #1a2035 0%, #2d3a6a 100%);
+            padding: 22px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .auth-tab {
+            flex: 1;
+            padding: 12px 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: #9aa3b2;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .auth-tab-active { color: #1a2035; border-bottom-color: #1a2035; }
+        .auth-tab:hover:not(.auth-tab-active) { color: #4a5568; }
+        .auth-eye-btn {
+            position: absolute;
+            right: 12px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer;
+            color: #9aa3b2; padding: 2px; transition: color .15s; line-height: 0;
+        }
+        .auth-eye-btn:hover { color: #4a5568; }
+        .auth-submit-btn {
+            width: 100%; background: #1a2035; color: #fff;
+            border: none; border-radius: 10px; padding: 12px;
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            transition: background .15s, transform .1s;
+            display: flex; align-items: center; justify-content: center;
+            gap: 7px; letter-spacing: .3px; font-family: inherit;
+        }
+        .auth-submit-btn:hover:not(:disabled) { background: #2a3555; }
+        .auth-submit-btn:active:not(:disabled) { transform: scale(.98); }
+        .auth-submit-btn:disabled { opacity: .6; cursor: not-allowed; }
+        .auth-error-box {
+            background: #fff5f5; border: 1px solid #fecaca;
+            border-radius: 8px; padding: 9px 12px;
+            font-size: 12px; color: #dc2626; display: none; margin-bottom: 2px;
+        }
+        .auth-hint-box {
+            background: #eff6ff; border: 1px solid #bfdbfe;
+            border-radius: 8px; padding: 9px 12px;
+            font-size: 12px; color: #1d4ed8; display: none;
+        }
+        .pwd-strength-track {
+            height: 4px; background: #f0f3f8;
+            border-radius: 4px; overflow: hidden; margin-top: 6px;
+        }
+        .pwd-strength-fill {
+            height: 100%; width: 0; border-radius: 4px;
+            transition: width .3s, background .3s;
+        }
+        .auth-btn-spinner {
+            display: inline-block; width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+            border-radius: 50%; animation: mkt-spin .65s linear infinite; vertical-align: middle;
+        }
+        .auth-drop-item {
+            display: flex; align-items: center; gap: 8px;
+            width: 100%; background: none; border: none;
+            padding: 8px 10px; border-radius: 8px;
+            font-size: 12px; font-weight: 600; cursor: pointer;
+            transition: background .12s; text-align: left; font-family: inherit; color: #3a4560;
+        }
+        .auth-drop-item:hover { background: #f4f6fb; }
+        .auth-drop-item.danger { color: #ef4444; }
+        .auth-drop-item.danger:hover { background: #fff5f5; }
+        .mkt-import-btn-locked { background: #8898aa !important; }
+        .mkt-import-btn-locked:hover { background: #6b7890 !important; }
+
+        /* ===== 用户面板（我的上传 + 账户设置）===== */
+        .user-modal-card {
+            position: relative; background: #fff; border-radius: 20px;
+            box-shadow: 0 28px 60px rgba(0,0,0,.25);
+            width: 620px; max-width: 96vw; max-height: 86vh;
+            display: flex; flex-direction: column;
+            animation: modalFadeIn .22s cubic-bezier(.34,1.2,.64,1);
+            overflow: hidden;
+        }
+        .user-modal-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 24px; border-bottom: 1.5px solid #f0f3f8; flex-shrink: 0;
+        }
+        .user-modal-head h2 { font-size: 15px; font-weight: 700; color: #1a2035; }
+        .user-modal-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+        .user-modal-body::-webkit-scrollbar { width: 5px; }
+        .user-modal-body::-webkit-scrollbar-thumb { background: #e0e5ef; border-radius: 4px; }
+
+        /* 我的上传 - 上传卡片 */
+        .up-card {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 14px 16px; border-radius: 12px;
+            border: 1.5px solid #e8edf5; background: #fff;
+            transition: box-shadow .15s; margin-bottom: 10px;
+        }
+        .up-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.07); }
+        .up-card-icon {
+            width: 40px; height: 40px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; flex-shrink: 0;
+        }
+        .up-card-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+        .up-card-tag {
+            font-size: 10px; font-weight: 600; padding: 1px 8px; border-radius: 20px;
+        }
+        .up-status-pending  { background: #fff7ed; color: #c2610c; border: 1px solid #fed7aa; }
+        .up-status-approved { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+        .up-status-rejected { background: #fff5f5; color: #dc2626; border: 1px solid #fecaca; }
+
+        /* 账户设置 - section 分割 */
+        .settings-section {
+            background: #fff; border-radius: 14px; border: 1.5px solid #e8edf5;
+            padding: 18px 20px; margin-bottom: 14px;
+        }
+        .settings-section-title {
+            font-size: 11px; font-weight: 700; color: #9aa3b2;
+            letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px;
+            padding-bottom: 8px; border-bottom: 1px solid #f0f3f8;
+        }
+        .settings-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        @media(max-width:480px){ .settings-row { grid-template-columns: 1fr; } }
+
+        /* 状态提示条 */
+        .up-alert {
+            padding: 9px 14px; border-radius: 9px; font-size: 12px;
+            margin-bottom: 14px; display: none;
+        }
+        .up-alert-ok  { background: #f0fdf4; border: 1px solid #bbf7d0; color: #16a34a; }
+        .up-alert-err { background: #fff5f5; border: 1px solid #fecaca; color: #dc2626; }
     </style>
 </head>
 
@@ -608,6 +935,7 @@
                 <button onclick="switchTab('logic')" id="tab-logic" class="tab-btn active">逻辑设计</button>
                 <button onclick="switchTab('config')" id="tab-config" class="tab-btn">插件配置</button>
                 <button onclick="switchTab('source')" id="tab-source" class="tab-btn">源码预览</button>
+                <button onclick="switchTab('market')" id="tab-market" class="tab-btn">模板市场</button>
                 <button onclick="switchTab('about')" id="tab-about" class="tab-btn">关于</button>
             </nav>
         </div>
@@ -636,6 +964,7 @@
             <input type="file" id="blueprintFileInput" accept=".mcbp,.json" style="display:none"
                 onchange="importBlueprint(this)">
 
+            <!-- 账户区域，由 auth.js 动态渲染 -->
             <div id="auth-header-area"></div>
 
             <button id="compileBtn" onclick="compilePlugin()"
@@ -1160,6 +1489,200 @@
     </div>
 
 
+    <!-- ===== 模板市场 ===== -->
+    <div id="view-market" class="view-section"
+        style="flex-direction:column; overflow-y:auto; background:#f0f2f5; position:absolute; inset:0; z-index:10;">
+
+        <br><br>
+
+        <!-- 顶部搜索栏 -->
+        <div style="background:#fff; border-bottom:1.5px solid #e8edf5; padding:20px 32px; position:sticky; top:0; z-index:20; box-shadow:0 2px 8px rgba(0,0,0,.04);">
+            <div style="max-width:1100px; margin:0 auto; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:240px; position:relative;">
+                    <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.4;" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <input id="market-search" type="text" placeholder="搜索模板名称、标签…"
+                        oninput="marketSearch(this.value)"
+                        style="width:100%;background:#f8fafd;border:1.5px solid #e2e8f0;border-radius:10px;padding:9px 12px 9px 34px;font-size:13px;outline:none;color:#1a2035;transition:border-color .15s;">
+                </div>
+                <div id="market-cats" style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <button class="mkt-cat active" data-cat="all" onclick="marketSetCat('all')">全部</button>
+                    <button class="mkt-cat" data-cat="utility" onclick="marketSetCat('utility')">实用工具</button>
+                    <button class="mkt-cat" data-cat="game" onclick="marketSetCat('game')">游戏玩法</button>
+                    <button class="mkt-cat" data-cat="economy" onclick="marketSetCat('economy')">经济系统</button>
+                    <button class="mkt-cat" data-cat="admin" onclick="marketSetCat('admin')">管理辅助</button>
+                    <button class="mkt-cat" data-cat="social" onclick="marketSetCat('social')">社交互动</button>
+                </div>
+                <!-- 由 market.js 根据登录状态动态渲染 -->
+                <div id="market-action-btn"></div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div style="max-width:1100px; margin:28px auto 80px; padding:0 32px; width:100%;">
+
+            <!-- 统计栏 -->
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+                <div id="market-count" style="font-size:12px; color:#9aa3b2;"></div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:12px;color:#9aa3b2;">排序：</span>
+                    <select id="market-sort" onchange="marketSort(this.value)"
+                        style="background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;padding:5px 10px;font-size:12px;color:#3a4560;outline:none;cursor:pointer;">
+                        <option value="hot">最热门</option>
+                        <option value="new">最新发布</option>
+                        <option value="alpha">名称排序</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 加载中占位 -->
+            <div id="market-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 0;gap:16px;">
+                <div class="mkt-spinner"></div>
+                <div style="font-size:13px;color:#b0b8c8;">正在加载模板…</div>
+            </div>
+
+            <!-- 错误占位 -->
+            <div id="market-error" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:80px 0;gap:12px;">
+                <svg width="48" height="48" fill="none" stroke="#d0d5e0" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                <div style="font-size:14px;font-weight:600;color:#9aa3b2;">无法连接到模板服务器</div>
+                <div id="market-error-msg" style="font-size:12px;color:#b0b8c8;max-width:320px;text-align:center;"></div>
+                <button onclick="marketLoad()" style="margin-top:8px;background:#f0f3f8;border:none;border-radius:8px;padding:8px 20px;font-size:12px;font-weight:600;color:#4a5568;cursor:pointer;">重试</button>
+            </div>
+
+            <!-- 空结果占位 -->
+            <div id="market-empty" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:80px 0;gap:12px;">
+                <svg width="48" height="48" fill="none" stroke="#d0d5e0" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <div style="font-size:14px;font-weight:600;color:#9aa3b2;">没有找到相关模板</div>
+                <div style="font-size:12px;color:#b0b8c8;">换个关键词或分类试试吧</div>
+            </div>
+
+            <!-- 卡片网格 -->
+            <div id="market-grid" style="display:none; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px;"></div>
+        </div>
+    </div>
+
+    <!-- 模板详情弹窗 -->
+    <div id="marketDetailModal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeMarketDetail()"></div>
+        <div style="position:relative;background:#fff;border-radius:20px;box-shadow:0 24px 48px rgba(0,0,0,.22);width:580px;max-width:94vw;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;animation:modalFadeIn .2s ease;">
+            <div id="mdt-header" style="padding:24px 28px 0;flex-shrink:0;">
+                <div style="display:flex;align-items:flex-start;gap:16px;">
+                    <div id="mdt-icon" style="width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;"></div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <span id="mdt-name" style="font-size:17px;font-weight:700;color:#1a2035;"></span>
+                            <span id="mdt-version" style="font-size:10px;background:#f4f6fb;color:#7a8494;border-radius:4px;padding:1px 7px;font-family:monospace;"></span>
+                        </div>
+                        <div id="mdt-author" style="font-size:12px;color:#9aa3b2;margin-top:3px;"></div>
+                        <div id="mdt-tags" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;"></div>
+                    </div>
+                    <button onclick="closeMarketDetail()" style="background:none;border:none;cursor:pointer;color:#9aa3b2;font-size:20px;line-height:1;padding:2px 6px;">×</button>
+                </div>
+                <div id="mdt-desc" style="font-size:13px;color:#4a5568;line-height:1.7;margin:16px 0;padding:14px 16px;background:#f8fafd;border-radius:10px;border:1px solid #e8edf5;"></div>
+                <div style="display:flex;gap:20px;padding-bottom:16px;border-bottom:1px solid #f0f3f8;">
+                    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#9aa3b2;">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span id="mdt-downloads"></span> 次下载
+                    </div>
+                    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#9aa3b2;">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <span id="mdt-date"></span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#9aa3b2;">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                        <span id="mdt-nodes"></span> 个节点
+                    </div>
+                </div>
+            </div>
+
+            <div style="padding:16px 28px 24px;flex-shrink:0;display:flex;gap:10px;border-top:1px solid #f0f3f8;">
+                <button id="mdt-import-btn" onclick="marketImportCurrent()"
+                    style="flex:1;background:#1a2035;color:#fff;border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;"
+                    onmouseover="this.style.background='#2a3555'" onmouseout="this.style.background='#1a2035'">
+                    <svg style="vertical-align:-2px;margin-right:5px;" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    导入到工作区
+                </button>
+                <button onclick="closeMarketDetail()"
+                    style="padding:11px 20px;background:#f0f3f8;color:#4a5568;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 上传模板弹窗 -->
+    <div id="uploadModal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeUploadModal()"></div>
+        <div style="position:relative;background:#fff;border-radius:20px;box-shadow:0 24px 48px rgba(0,0,0,.22);width:500px;max-width:94vw;overflow:hidden;animation:modalFadeIn .2s ease;">
+            <div style="padding:24px 28px 0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+                    <div style="font-size:16px;font-weight:700;color:#1a2035;">上传模板</div>
+                    <button onclick="closeUploadModal()" style="background:none;border:none;cursor:pointer;color:#9aa3b2;font-size:20px;line-height:1;padding:2px 6px;">×</button>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:14px;">
+                    <!-- 当前用户信息 -->
+                    <div style="display:flex;align-items:center;gap:8px;background:#f8fafd;border:1px solid #e8edf5;border-radius:8px;padding:8px 12px;">
+                        <svg width="13" height="13" fill="none" stroke="#9aa3b2" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <span style="font-size:12px;color:#6b7890;">上传者：</span>
+                        <span id="up-author-display" style="font-size:12px;font-weight:700;color:#1a2035;"></span>
+                        <span style="font-size:11px;color:#b0b8c8;margin-left:auto;">模板审核通过后将公开显示</span>
+                    </div>
+                    <div>
+                        <label class="cfg-label">模板名称 <span style="color:#ef4444;">*</span></label>
+                        <input id="up-name" class="cfg-input" placeholder="例如：欢迎消息插件" maxlength="60">
+                    </div>
+                    <div>
+                        <label class="cfg-label">简短描述 <span style="color:#ef4444;">*</span></label>
+                        <textarea id="up-desc" class="cfg-input" placeholder="简述这个模板的功能（最多500字）" maxlength="500" rows="3" style="resize:vertical;"></textarea>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div>
+                            <label class="cfg-label">分类 <span style="color:#ef4444;">*</span></label>
+                            <select id="up-cat" class="cfg-input" style="cursor:pointer;">
+                                <option value="">请选择分类</option>
+                                <option value="utility">实用工具</option>
+                                <option value="game">游戏玩法</option>
+                                <option value="economy">经济系统</option>
+                                <option value="admin">管理辅助</option>
+                                <option value="social">社交互动</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="cfg-label">版本标注</label>
+                            <input id="up-version" class="cfg-input" placeholder="例如：1.0" maxlength="16">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="cfg-label">标签（逗号分隔，最多5个）</label>
+                        <input id="up-tags" class="cfg-input" placeholder="例如：聊天,欢迎,消息" maxlength="60">
+                    </div>
+                    <div>
+                        <label class="cfg-label">蓝图文件（.mcbp）<span style="color:#ef4444;">*</span></label>
+                        <div id="up-drop-area"
+                            style="border:2px dashed #e2e8f0;border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:border-color .15s;background:#f8fafd;"
+                            onclick="document.getElementById('up-file').click()"
+                            ondragover="event.preventDefault();this.style.borderColor='#4a80ff'"
+                            ondragleave="this.style.borderColor='#e2e8f0'"
+                            ondrop="uploadHandleDrop(event)">
+                            <svg style="margin:0 auto 8px;display:block;opacity:.4;" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                            <div id="up-file-label" style="font-size:12px;color:#9aa3b2;">点击或拖拽 .mcbp 文件到此处</div>
+                        </div>
+                        <input type="file" id="up-file" accept=".mcbp,.json" style="display:none" onchange="uploadHandleFile(this)">
+                    </div>
+                </div>
+            </div>
+            <div style="padding:20px 28px 24px;display:flex;gap:10px;margin-top:4px;">
+                <button onclick="submitUpload()" class="auth-submit-btn" style="flex:1;border-radius:10px;padding:11px;font-size:13px;">
+                    提交上传
+                </button>
+                <button onclick="closeUploadModal()"
+                    style="padding:11px 20px;background:#f0f3f8;color:#4a5568;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+                    取消
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="view-about" class="view-section"
         style="flex-direction:column; overflow-y:auto; background:#f0f2f5; position:absolute; inset:0; z-index:10;">
         <div style="max-width:680px; margin:88px auto 80px; padding:0 24px; width:100%;">
@@ -1212,6 +1735,21 @@
                         style="font-size:12px;background:#f4f6fb;padding:1px 5px;border-radius:4px;">pom.xml</code>，无需手写样板代码，即可快速上手开发
                     Bukkit / Spigot 插件。
                 </p>
+            </div>
+
+            <div
+                style="background:#fff; border-radius:14px; border:1.5px solid #e8edf5; padding:20px 22px; box-shadow:0 2px 8px rgba(0,0,0,.04); margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; gap:16px;">
+                <div>
+                    <div style="font-size:12px; font-weight:700; color:#1a2035; margin-bottom:6px;">网络模式</div>
+                    <div style="font-size:12px; color:#6b7890; line-height:1.6;">
+                        当前为 <span data-net-label>离线</span> 模式。启用在线后可访问模板市场与账户功能。
+                    </div>
+                </div>
+                <label class="mode-toggle" title="切换离线/在线模式">
+                    <span class="mode-text" data-net-label>离线</span>
+                    <input id="online-mode-toggle-about" type="checkbox" onchange="toggleOnlineMode(this.checked)">
+                    <span class="mode-switch" aria-hidden="true"></span>
+                </label>
             </div>
 
 
@@ -1370,6 +1908,34 @@
                 style="background:#fff; border-radius:14px; border:1.5px solid #e8edf5; padding:20px 22px; box-shadow:0 2px 8px rgba(0,0,0,.04); margin-bottom:12px;">
                 <div
                     style="font-size:10px; font-weight:700; color:#b0b8c8; letter-spacing:1.2px; text-transform:uppercase; margin-bottom:14px;">
+                    法律声明</div>
+
+
+                <div style="margin-bottom:16px;">
+                    <div style="font-size:12px; font-weight:600; color:#4a5568; margin-bottom:6px;">本项目采用 GNU General
+                        Public License v3.0 协议开源。<br>
+                        使用本工具生成的源代码、配置文件及其编译产物，其所有权归使用者所有，RC Studio 不对生成代码的版权主张任何权利。<br>
+                        本工具为纯客户端处理，所有逻辑设计与配置文件均在用户本地生成，RC Studio 不会收集、存储或上传用户的任何代码逻辑或服务器配置数据。
+                    </div>
+                </div>
+
+
+                <div style="background:#fffbf0; border:1px solid #fdedc0; border-radius:8px; padding:12px 14px;">
+                    <div style="font-size:11px; font-weight:700; color:#a07020; margin-bottom:6px;">⚠ 免责声明</div>
+                    <p style="font-size:12px; color:#7a6030; line-height:1.7; margin:0;">
+                        本工具自动生成的代码仅供参考，不保证在所有 Minecraft 服务端版本上完全兼容。<br><b>用户在使用“网络请求”或“执行控制台指令”等节点时需自行承担风险。RC Studio
+                            不对因用户逻辑设计不当导致的服务器被攻击、数据泄露或恶意指令执行承担责任。</b><br>RedstoneCode Studio 与 Mojang Studios、Microsoft
+                        及
+                        SpigotMC 团队无任何从属或合作关系。"Minecraft" 为 Mojang AB 的注册商标，本项目不以任何方式主张对该商标的所有权。
+                    </p>
+                </div>
+            </div>
+
+
+            <div
+                style="background:#fff; border-radius:14px; border:1.5px solid #e8edf5; padding:20px 22px; box-shadow:0 2px 8px rgba(0,0,0,.04); margin-bottom:12px;">
+                <div
+                    style="font-size:10px; font-weight:700; color:#b0b8c8; letter-spacing:1.2px; text-transform:uppercase; margin-bottom:14px;">
                     版本历史</div>
                 <div style="position:relative; padding-left:20px;">
 
@@ -1470,6 +2036,325 @@
         </div>
     </div>
 
+    <!-- ===== 离线引导弹窗 ===== -->
+    <div id="offlineGuideModal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeOfflineGuide()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-icon"></span>
+                <h3 class="modal-title">模板市场不可用</h3>
+                <button class="modal-close" onclick="closeOfflineGuide()">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin:0 0 6px 0;">当前为离线模式，模板市场等在线功能已被禁用。</p>
+                <p style="margin:0;color:#6b7280;font-size:12px;">可在右上角切换到在线模式以访问模板市场。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="closeOfflineGuide()">保持离线</button>
+                <button class="modal-btn" onclick="requestOnlineEnable('market')"
+                    style="background:#1a2035;color:#fff;border-color:#1a2035;">开启在线模式</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 在线声明弹窗 ===== -->
+    <div id="onlineDeclModal" class="modal hidden">
+        <div class="modal-overlay" onclick="cancelOnlineDecl()"></div>
+        <div class="modal-content" style="width:520px;max-width:92%;">
+            <div class="modal-header">
+                <span class="modal-icon"></span>
+                <h3 class="modal-title">在线功能声明</h3>
+                <button class="modal-close" onclick="cancelOnlineDecl()">×</button>
+            </div>
+            <div class="modal-body" style="line-height:1.7;">
+                <p style="margin:0 0 8px 0;">启用在线模式后，RC Studio 将访问网络以提供模板市场相关功能。</p>
+                <ul style="margin:0 0 10px 18px;padding:0;color:#4b5563;font-size:12px;">
+                    <li>会连接模板市场服务器以获取模板列表、下载与上传。</li>
+                    <li>登录/注册等操作将与远程服务通信。</li>
+                    <li>除上述功能外，本地项目与代码不会被自动上传。</li>
+                </ul>
+                <div style="font-size:12px;color:#6b7280;">是否同意开启在线模式？</div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="cancelOnlineDecl()">取消</button>
+                <button class="modal-btn" onclick="acceptOnlineDecl()"
+                    style="background:#1a2035;color:#fff;border-color:#1a2035;">同意并开启</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 账户登录/注册弹窗 ===== -->
+    <div id="authModal" class="modal hidden" style="z-index:20000;">
+        <div class="modal-overlay" onclick="closeAuthModal()"></div>
+        <div class="auth-modal-card">
+            <!-- 弹窗头部 -->
+            <div class="auth-modal-header">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <svg width="36" height="36" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+                        <rect width="30" height="30" rx="4" fill="rgba(255,255,255,.12)"/>
+                        <rect x="13" y="7"  width="4" height="4" fill="#cc3333"/>
+                        <rect x="13" y="13" width="4" height="4" fill="#ff4444" opacity=".95"/>
+                        <rect x="7"  y="13" width="4" height="4" fill="#cc3333"/>
+                        <rect x="19" y="13" width="4" height="4" fill="#cc3333"/>
+                        <rect x="13" y="19" width="4" height="4" fill="#cc3333"/>
+                        <rect x="7"  y="7"  width="4" height="4" fill="rgba(255,255,255,.1)"/>
+                        <rect x="19" y="7"  width="4" height="4" fill="rgba(255,255,255,.1)"/>
+                        <rect x="7"  y="19" width="4" height="4" fill="rgba(255,255,255,.1)"/>
+                        <rect x="19" y="19" width="4" height="4" fill="rgba(255,255,255,.1)"/>
+                        <rect x="14" y="14" width="2" height="2" fill="#ffaaaa"/>
+                    </svg>
+                    <div>
+                        <div style="font-size:15px;font-weight:700;color:#fff;letter-spacing:-.2px;">RC Studio 账户</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:2px;">模板市场下载需要登录</div>
+                    </div>
+                </div>
+                <button onclick="closeAuthModal()"
+                    style="background:rgba(255,255,255,.1);border:none;border-radius:8px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:18px;transition:background .15s;line-height:1;"
+                    onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.1)'">×</button>
+            </div>
+
+            <!-- 弹窗体 -->
+            <div style="padding:0 24px 24px;">
+                <!-- 来源提示（未登录点下载时显示） -->
+                <div id="auth-hint-msg" class="auth-hint-box" style="margin-top:18px;">
+                    <svg style="display:inline;vertical-align:-2px;margin-right:4px;" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                    <span id="auth-hint-text"></span>
+                </div>
+
+                <!-- Tab 切换 -->
+                <div style="display:flex;border-bottom:1.5px solid #f0f3f8;margin:18px 0 0;">
+                    <button id="authtab-login"    class="auth-tab auth-tab-active" onclick="switchAuthTab('login')">登录</button>
+                    <button id="authtab-register" class="auth-tab"                 onclick="switchAuthTab('register')">注册</button>
+                </div>
+
+                <!-- 错误提示 -->
+                <div id="auth-error" class="auth-error-box" style="margin-top:14px;">
+                    <svg style="display:inline;vertical-align:-2px;margin-right:4px;" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                    <span id="auth-error-text"></span>
+                </div>
+
+                <!-- 登录表单 -->
+                <form id="auth-login-form" onsubmit="handleLogin(event)" style="display:flex;flex-direction:column;gap:14px;margin-top:16px;">
+                    <div>
+                        <label class="cfg-label">用户名 / 邮箱</label>
+                        <input id="auth-login-identity" class="cfg-input" type="text"
+                            placeholder="输入用户名或邮箱地址" autocomplete="username" spellcheck="false">
+                    </div>
+                    <div>
+                        <label class="cfg-label">密码</label>
+                        <div style="position:relative;">
+                            <input id="auth-login-password" class="cfg-input" type="password"
+                                placeholder="输入密码" autocomplete="current-password" style="padding-right:40px;">
+                            <button type="button" class="auth-eye-btn" onclick="togglePwdVisibility('auth-login-password',this)">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#6b7890;cursor:pointer;user-select:none;">
+                        <input type="checkbox" id="auth-remember" style="accent-color:#1a2035;width:13px;height:13px;">
+                        记住我
+                    </label>
+                    <div style="background:#f8fafd;border:1px solid #e8edf5;border-radius:8px;padding:10px 12px;font-size:11px;color:#6b7890;line-height:1.65;">
+                        登录或注册即代表同意<a href="https://rcstudio.zeromi.cn/use/" target="_blank">《用户协议》</a>和<a href="https://rcstudio.zeromi.cn/privacy/" target="_blank">《隐私政策》</a>
+                    </div>
+                    <button type="submit" class="auth-submit-btn">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+                        登 录
+                    </button>
+                    <div style="text-align:center;font-size:12px;color:#9aa3b2;">
+                        还没有账户？
+                        <button type="button" onclick="switchAuthTab('register')"
+                            style="background:none;border:none;font-size:12px;font-weight:700;color:#1a2035;cursor:pointer;padding:0;font-family:inherit;">立即注册 →</button>
+                    </div>
+                </form>
+
+                <!-- 注册表单 -->
+                <form id="auth-register-form" onsubmit="handleRegister(event)" style="display:none;flex-direction:column;gap:14px;margin-top:16px;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div>
+                            <label class="cfg-label">用户名 <span style="color:#ef4444">*</span></label>
+                            <input id="auth-reg-username" class="cfg-input" type="text"
+                                placeholder="2-20 个字符" maxlength="20" autocomplete="username" spellcheck="false">
+                        </div>
+                        <div>
+                            <label class="cfg-label">邮箱 <span style="color:#ef4444">*</span></label>
+                            <input id="auth-reg-email" class="cfg-input" type="email"
+                                placeholder="your@email.com" autocomplete="email" spellcheck="false">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="cfg-label">密码 <span style="color:#ef4444">*</span>
+                            <span id="pwd-strength-label" style="float:right;font-size:10px;font-weight:700;letter-spacing:.3px;"></span>
+                        </label>
+                        <div style="position:relative;">
+                            <input id="auth-reg-password" class="cfg-input" type="password"
+                                placeholder="至少 8 位，建议大写字母 + 数字 + 符号" maxlength="64"
+                                oninput="checkPasswordStrength(this.value)" style="padding-right:40px;">
+                            <button type="button" class="auth-eye-btn" onclick="togglePwdVisibility('auth-reg-password',this)">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
+                        <div class="pwd-strength-track"><div id="pwd-strength-bar" class="pwd-strength-fill"></div></div>
+                    </div>
+                    <div>
+                        <label class="cfg-label">确认密码 <span style="color:#ef4444">*</span></label>
+                        <div style="position:relative;">
+                            <input id="auth-reg-confirm" class="cfg-input" type="password"
+                                placeholder="再次输入密码" maxlength="64" style="padding-right:40px;">
+                            <button type="button" class="auth-eye-btn" onclick="togglePwdVisibility('auth-reg-confirm',this)">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div style="background:#f8fafd;border:1px solid #e8edf5;border-radius:8px;padding:10px 12px;font-size:11px;color:#6b7890;line-height:1.65;">
+                        登录或注册即代表同意<a href="https://rcstudio.zeromi.cn/use/" target="_blank">《用户协议》</a>和<a href="https://rcstudio.zeromi.cn/privacy/" target="_blank">《隐私政策》</a>
+                    </div>
+                    <button type="submit" class="auth-submit-btn">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                        创建账户
+                    </button>
+                    <div style="text-align:center;font-size:12px;color:#9aa3b2;">
+                        已有账户？
+                        <button type="button" onclick="switchAuthTab('login')"
+                            style="background:none;border:none;font-size:12px;font-weight:700;color:#1a2035;cursor:pointer;padding:0;font-family:inherit;">立即登录 →</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 我的上传弹窗 ===== -->
+    <div id="myUploadsModal" class="modal hidden" style="z-index:19000;">
+        <div class="modal-overlay" onclick="closeMyUploads()"></div>
+        <div class="user-modal-card">
+            <div class="user-modal-head">
+                <h2>
+                    我的上传
+                </h2>
+                <button onclick="closeMyUploads()" style="background:none;border:none;cursor:pointer;color:#9aa3b2;font-size:20px;line-height:1;padding:2px 8px;border-radius:7px;transition:background .12s;" onmouseover="this.style.background='#f4f6fb'" onmouseout="this.style.background='none'">×</button>
+            </div>
+            <div class="user-modal-body">
+                <!-- 加载中 -->
+                <div id="up-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 0;gap:12px;">
+                    <div class="mkt-spinner"></div>
+                    <div style="font-size:12px;color:#b0b8c8;">正在加载…</div>
+                </div>
+                <!-- 空状态 -->
+                <div id="up-empty" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:48px 0;gap:10px;">
+                    <svg width="44" height="44" fill="none" stroke="#d0d5e0" stroke-width="1.5" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    <div style="font-size:13px;font-weight:600;color:#9aa3b2;">还没有上传过模板</div>
+                    <button onclick="closeMyUploads();openUploadModal();" style="margin-top:4px;background:#1a2035;color:#fff;border:none;border-radius:9px;padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;">去上传第一个</button>
+                </div>
+                <!-- 错误 -->
+                <div id="up-error" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:48px 0;gap:10px;">
+                    <div style="font-size:13px;font-weight:600;color:#9aa3b2;">加载失败</div>
+                    <div id="up-error-msg" style="font-size:12px;color:#b0b8c8;"></div>
+                    <button onclick="loadMyUploads()" style="background:#f0f3f8;border:none;border-radius:8px;padding:7px 18px;font-size:12px;font-weight:600;color:#4a5568;cursor:pointer;">重试</button>
+                </div>
+                <!-- 列表 -->
+                <div id="up-list" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 账户设置弹窗 ===== -->
+    <div id="settingsModal" class="modal hidden" style="z-index:19000;">
+        <div class="modal-overlay" onclick="closeSettings()"></div>
+        <div class="user-modal-card" style="width:520px;">
+            <div class="user-modal-head">
+                <h2>
+                    账户设置
+                </h2>
+                <button onclick="closeSettings()" style="background:none;border:none;cursor:pointer;color:#9aa3b2;font-size:20px;line-height:1;padding:2px 8px;border-radius:7px;transition:background .12s;" onmouseover="this.style.background='#f4f6fb'" onmouseout="this.style.background='none'">×</button>
+            </div>
+            <div class="user-modal-body">
+
+                <!-- 基本信息 -->
+                <div class="settings-section">
+                    <div class="settings-section-title">基本信息</div>
+                    <div id="settings-profile-alert" class="up-alert"></div>
+                    <div class="settings-row">
+                        <div>
+                            <label class="cfg-label">用户名</label>
+                            <input id="st-username" class="cfg-input" type="text" maxlength="32" placeholder="2-32 个字符" spellcheck="false">
+                        </div>
+                        <div>
+                            <label class="cfg-label">邮箱</label>
+                            <input id="st-email" class="cfg-input" type="email" maxlength="128" placeholder="your@email.com" spellcheck="false">
+                        </div>
+                    </div>
+                    <div style="margin-top:14px;">
+                        <button onclick="saveProfile()" class="auth-submit-btn" style="width:auto;padding:9px 22px;font-size:12px;">
+                            保存基本信息
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 修改密码 -->
+                <div class="settings-section">
+                    <div class="settings-section-title">修改密码</div>
+                    <div id="settings-pwd-alert" class="up-alert"></div>
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label class="cfg-label">当前密码</label>
+                        <div style="position:relative;">
+                            <input id="st-old-pwd" class="cfg-input" type="password" placeholder="输入当前密码以验证身份" style="padding-right:40px;">
+                            <button type="button" class="auth-eye-btn" onclick="togglePwdVisibility('st-old-pwd',this)">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div>
+                            <label class="cfg-label">新密码</label>
+                            <div style="position:relative;">
+                                <input id="st-new-pwd" class="cfg-input" type="password" placeholder="至少 8 位" maxlength="64" style="padding-right:40px;" oninput="checkPasswordStrength(this.value)">
+                                <button type="button" class="auth-eye-btn" onclick="togglePwdVisibility('st-new-pwd',this)">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
+                            <div class="pwd-strength-track" style="margin-top:5px;"><div id="pwd-strength-bar" class="pwd-strength-fill"></div></div>
+                        </div>
+                        <div>
+                            <label class="cfg-label">确认新密码</label>
+                            <div style="position:relative;">
+                                <input id="st-confirm-pwd" class="cfg-input" type="password" placeholder="再次输入新密码" maxlength="64" style="padding-right:40px;">
+                                <button type="button" class="auth-eye-btn" onclick="togglePwdVisibility('st-confirm-pwd',this)">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-top:14px;">
+                        <button onclick="savePassword()" class="auth-submit-btn" style="width:auto;padding:9px 22px;font-size:12px;">
+                            更新密码
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 账户信息（只读） -->
+                <div class="settings-section" style="background:#f8fafd;">
+                    <div class="settings-section-title">账户信息</div>
+                    <div style="display:flex;gap:20px;flex-wrap:wrap;">
+                        <div style="font-size:12px;color:#6b7890;">
+                            <span style="font-weight:600;color:#1a2035;" id="st-info-username"></span>
+                            <span style="margin-left:6px;font-size:10px;background:#f0f3f8;padding:1px 7px;border-radius:10px;color:#7a8494;">用户名</span>
+                        </div>
+                        <div style="font-size:12px;color:#6b7890;">
+                            注册时间：<span id="st-info-joined" style="font-weight:600;color:#1a2035;"></span>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px;padding-top:12px;border-top:1px solid #edf0f7;">
+                        <button onclick="confirmDeleteAccount()"
+                            style="background:none;border:none;font-size:12px;color:#ef4444;cursor:pointer;font-family:inherit;padding:0;font-weight:600;">
+                            注销账户 →
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <!-- 按依赖顺序加载各模块 -->
     <script src="js/constants.js"></script>
     <script src="js/online-mode.js"></script>
@@ -1481,6 +2366,9 @@
     <script src="js/blueprint.js"></script>
     <script src="js/compile.js"></script>
     <script src="js/graph.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/user-panel.js"></script>
+    <script src="js/market.js"></script>
     <script src="js/main.js"></script>
 
 </body>
