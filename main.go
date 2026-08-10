@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
@@ -13,19 +14,21 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
 var (
-	buildLock    sync.Mutex
+	// 编译信号量：限制同时进行的 Maven 构建数量
+	buildSem     = make(chan struct{}, 1)
 	ProgramDir   string
 	MavenCommand string
 )
@@ -70,8 +73,18 @@ func buildProxyTargetURL(path string) (string, error) {
 		targetURL = _apiOrigin + _authPath + "/" + path
 	}
 
+	u, err := url.Parse(targetURL)
+	if err != nil || u.Host == "" {
+		return "", fmt.Errorf("目标 URL 无效: %s", targetURL)
+	}
+
+	host := strings.ToLower(u.Hostname())
 	for _, origin := range _trustedOrigins {
-		if strings.HasPrefix(targetURL, origin) {
+		ou, err := url.Parse(origin)
+		if err != nil || ou.Host == "" {
+			continue
+		}
+		if strings.ToLower(ou.Hostname()) == host && u.Scheme == ou.Scheme {
 			return targetURL, nil
 		}
 	}
@@ -437,11 +450,11 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 func loadSettings() AppSettings {
 	data, err := os.ReadFile(SettingsFile)
 	if err != nil {
-		return AppSettings{OnlineMode: false}
+		return AppSettings{OnlineMode: true}
 	}
 	var s AppSettings
 	if err := json.Unmarshal(data, &s); err != nil {
-		return AppSettings{OnlineMode: false}
+		return AppSettings{OnlineMode: true}
 	}
 	return s
 }
@@ -496,8 +509,21 @@ func buildHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	buildLock.Lock()
-	defer buildLock.Unlock()
+	// 构建整体超时（前端 90s 超时，后端多留余量主动终止进程）
+	buildCtx, cancel := context.WithTimeout(r.Context(), 120*time.Second)
+	defer cancel()
+
+	// 获取编译信号量：可排队，客户端断开或超时则放弃，避免长期阻塞
+	select {
+	case buildSem <- struct{}{}:
+		defer func() { <-buildSem }()
+	case <-buildCtx.Done():
+		log.Printf("编译等待被取消或超时: %v", buildCtx.Err())
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]string{"error": "编译队列繁忙，请稍后重试"})
+		return
+	}
 
 	projectDir := filepath.Join(TempBuildDir, req.PluginName)
 
@@ -556,15 +582,39 @@ func buildHandler(w http.ResponseWriter, r *http.Request) {
 
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" && strings.HasSuffix(mavenCmd, ".cmd") {
-		cmd = exec.Command("cmd", "/c", mavenCmd, "clean", "package", "-DskipTests", "-q")
+		cmd = exec.CommandContext(buildCtx, "cmd", "/c", mavenCmd, "clean", "package", "-DskipTests", "-q")
 	} else {
-		cmd = exec.Command(mavenCmd, "clean", "package", "-DskipTests", "-q")
+		cmd = exec.CommandContext(buildCtx, mavenCmd, "clean", "package", "-DskipTests", "-q")
 	}
 	cmd.Dir = projectDir
 	cmd.Env = append(os.Environ(), "MAVEN_HOME="+mavenHome)
 
+	// Windows 下 cmd /c 会派生子进程，需连同整个进程树一起结束
+	if runtime.GOOS == "windows" {
+		cmd.Cancel = func() error {
+			if cmd.Process == nil {
+				return nil
+			}
+			taskkill := exec.Command("taskkill", "/F", "/T", "/PID", strconv.Itoa(cmd.Process.Pid))
+			return taskkill.Run()
+		}
+	}
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		switch {
+		case buildCtx.Err() == context.DeadlineExceeded:
+			log.Printf("Maven 编译超时，已终止进程")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusGatewayTimeout)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "编译超时，已终止构建进程，请稍后重试",
+			})
+			return
+		case buildCtx.Err() == context.Canceled:
+			log.Printf("客户端断开，编译已取消")
+			return
+		}
 		decodedOutput := decodeGBK(output)
 		log.Printf("Maven 编译失败: %v, 输出: %s", err, decodedOutput)
 		w.Header().Set("Content-Type", "application/json")

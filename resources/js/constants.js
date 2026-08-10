@@ -1,4 +1,4 @@
-const APP_VERSION = 20260509;
+const APP_VERSION = 20260810;
 
 // LiteGraph 画布与图实例
 let litegraphCanvas, litegraphGraph;

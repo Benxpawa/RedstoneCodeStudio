@@ -1078,6 +1078,12 @@ function registerAllNodes() {
         this.size = [170, 55];
     }, C.cvtFg, C.cvtBg);
 
+    defNode("convert/locationToStr", "坐标转字符串", function () {
+        this.addInput("位置", "location");
+        this.addOutput("字符串", "string");
+        this.size = [190, 55];
+    }, C.cvtFg, C.cvtBg);
+
     // 类型判断节点
     function CheckTypeNode() {
         this.addInput("执行流", "exec");

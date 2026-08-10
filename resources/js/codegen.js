@@ -120,6 +120,10 @@ function resolveString(node, inputName, fallback) {
         const plrSrc = getLinkedSourceNode(src, "玩家");
         return `${resolvePlayer(plrSrc)}.getName()`;
     }
+    if (src.type === "convert/locationToStr") {
+        const locExpr = resolveLocation(src, "位置");
+        return `(${locExpr}.getWorld().getName() + "," + ${locExpr}.getX() + "," + ${locExpr}.getY() + "," + ${locExpr}.getZ())`;
+    }
 
     if (src.type === "player/getItemInHand") {
         return `${resolvePlayerInput(src, "玩家")}.getInventory().getItemInMainHand().getType().name()`;

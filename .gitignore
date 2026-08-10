@@ -47,3 +47,6 @@ temp/
 
 # AGENTS.md（项目上下文文档）
 AGENTS.md
+
+# 本地持久化设置（含登录会话凭据）
+settings.json
