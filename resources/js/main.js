@@ -1,3 +1,24 @@
+// 拦截开发者工具相关快捷键（F12 / Ctrl+U / Ctrl+Shift+I/J/C / Ctrl+S 等）
+document.addEventListener('keydown', function (e) {
+    const key = (e.key || '').toUpperCase();
+    const isF12 = key === 'F12';
+    const isCtrl = e.ctrlKey || e.metaKey;
+    const isShift = e.shiftKey;
+    if (isF12) { e.preventDefault(); e.stopPropagation(); return; }
+    if (isCtrl && key === 'U') { e.preventDefault(); e.stopPropagation(); return; }
+    if (isCtrl && isShift && (key === 'I' || key === 'J' || key === 'C' || key === 'K' || key === 'S')) {
+        e.preventDefault(); e.stopPropagation(); return;
+    }
+    if (isCtrl && key === 'S') { e.preventDefault(); e.stopPropagation(); return; }
+});
+
+// 禁用页面右键菜单（防止"检查元素"入口），但保留输入框/编辑器/画布内的右键菜单
+document.addEventListener('contextmenu', function (e) {
+    const t = e.target;
+    const inEditable = t && (t.closest('input, textarea, .ace_editor') || t.isContentEditable);
+    if (!inEditable) { e.preventDefault(); return false; }
+});
+
 document.addEventListener('DOMContentLoaded', function () {
 
     if (typeof initOnlineMode === 'function') initOnlineMode();

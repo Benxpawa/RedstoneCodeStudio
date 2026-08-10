@@ -7,7 +7,7 @@ import (
 )
 
 func openUI(url string) {
-	w := webview.New(true)
+	w := webview.New(false)
 	defer w.Destroy()
 	w.SetTitle("RedstoneCode Studio")
 	w.SetSize(1280, 800, webview.HintNone)
